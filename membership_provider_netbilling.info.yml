@@ -1,0 +1,7 @@
+name: NETBilling Membership Provider
+type: module
+description: Membership Provider for NETBilling
+core: 8.x
+package: Membership
+dependencies:
+  - membership_provider
