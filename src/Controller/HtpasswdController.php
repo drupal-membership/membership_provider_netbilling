@@ -17,6 +17,11 @@ use Symfony\Component\HttpFoundation\RequestStack;
 class HtpasswdController extends ControllerBase implements ContainerInjectionInterface {
 
   /**
+   * The callback script version we are emulating.
+   */
+  const EMULATION_VERSION = 2.3;
+
+  /**
    * @var \Symfony\Component\HttpFoundation\Request
    */
   private $currentRequest;
@@ -52,8 +57,8 @@ class HtpasswdController extends ControllerBase implements ContainerInjectionInt
         'update_all_users',
       ],
       'GET' => [
-        // 'check_users',
-        'list_all_users',
+        'check_users',
+        // 'list_all_users', // Commented-out in source file.
         'test',
       ]
     ];
@@ -63,6 +68,7 @@ class HtpasswdController extends ControllerBase implements ContainerInjectionInt
     }
     throw new \Exception('Invalid command.');
   }
+
   /**
    * Emulator for nbmember.cgi
    *
@@ -146,7 +152,7 @@ class HtpasswdController extends ControllerBase implements ContainerInjectionInt
       case 'list_all_users':
         // In original script,
         // list_all_users is coded, but commented out as a supported parameter.
-        netbilling_membership_cgi_error('list_all_users is commented out as a supported cgi parameter in the nbmember.cgi v' . NETBILLING_MEMBERSHIP_EMULATION_VERSION . ' script and not supported here.');
+        netbilling_membership_cgi_error('list_all_users is commented out as a supported cgi parameter in the nbmember.cgi v' . self::EMULATION_VERSION . ' script and not supported here.');
         break;
       default:
         netbilling_membership_cgi_error('Invalid command');
@@ -173,12 +179,30 @@ class HtpasswdController extends ControllerBase implements ContainerInjectionInt
       return new Response($e->getMessage(), 400);
     }
 
-    // The original script is ambiguous on GET/POST, however invoking other methods
-    // without specifying the correct data would result in variable-not-set failures, below.
-    $get_cmds = array('test', 'list_all_users');
-    if (!in_array($cmd, $get_cmds)) {
-      netbilling_membership_cgi_error(format_string('BAD METHOD: Only valid commands with GET method are: !cmds', array('!cmds' => implode(', ', $get_cmds))));
+    $response = new Response('', 200, ['Content-Type' => 'text/plain']);
+    switch ($this->cmd) {
+      case 'test':
+        $response->setContent($this->get_test());
+        break;
     }
+    return $response;
+  }
+
+  /**
+   * Returns test page output similar to model CGI script.
+   * We omit lots of the non-applicable bits and information disclosure risks.
+   *
+   * @returns string Content.
+   */
+  private function get_test() {
+    $label_length = 30;
+    $content = array(
+      '  OK: Control interface is live',
+      '',
+      str_pad('  Version', $label_length) . ': ' . self::EMULATION_VERSION,
+      str_pad('  Local date and time', $label_length) . ': ' . \Drupal::service('date.formatter')->format(time(), 'custom', 'r'),
+    );
+    return implode("\n", $content) . "\n";
   }
 
   /**

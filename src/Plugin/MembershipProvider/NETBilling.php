@@ -39,11 +39,6 @@ class NETBilling extends MembershipProviderBase implements MembershipProviderInt
   const MEMBER_UPDATE = 'https://secure.netbilling.com/gw/native/mupdate1.1';
 
   /**
-   * The callback script version we are emulating.
-   */
-  const EMULATION_VERSION = 2.3;
-
-  /**
    * The User-Agent header to send to NETBilling, based on their spec.
    */
   const NETBILLING_UA = 'Drupal/Version:2016.Jun.23';
@@ -144,8 +139,9 @@ class NETBilling extends MembershipProviderBase implements MembershipProviderInt
     $params = array(
       'account_id' => $config['account_id'],
       'site_tag' => $config['site_tag'],
-      'authorization' => $config['auth'],
+      'authorization' => $config['reporting_keyword'],
     );
+    $params = array_filter($params);
 
     // We must at the very least specify a "from" date
     $from = $from ? $from : strtotime('now -1 month');

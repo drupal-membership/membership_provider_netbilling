@@ -73,7 +73,7 @@ class NetbillingSiteConfigFormatter extends FormatterBase {
   protected function viewValue(FieldItemInterface $item) {
     // The text value has no text format assigned to it, so the user input
     // should equal the output, including newlines.
-    return nl2br(Html::escape($item->account_id . ':' . $item->site_id));
+    return nl2br(Html::escape($item->account_id . ':' . $item->site_tag));
   }
 
 }

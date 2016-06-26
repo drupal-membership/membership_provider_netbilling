@@ -69,39 +69,18 @@ class NetbillingSiteConfigWidget extends WidgetBase {
    * {@inheritdoc}
    */
   public function formElement(FieldItemListInterface $items, $delta, array $element, array &$form, FormStateInterface $form_state) {
-    $element['account_id'] = array(
-      '#title' => $this->t('Account ID'),
-      '#type' => 'textfield',
-      '#default_value' => isset($items[$delta]->value) ? $items[$delta]->value : NULL,
-      '#size' => $this->getSetting('size'),
-      '#placeholder' => $this->getSetting('placeholder'),
-      '#maxlength' => $this->getFieldSetting('max_length'),
-    );
-    $element['site_id'] = array(
-      '#title' => $this->t('Site ID'),
-      '#type' => 'textfield',
-      '#default_value' => isset($items[$delta]->value) ? $items[$delta]->value : NULL,
-      '#size' => $this->getSetting('size'),
-      '#placeholder' => $this->getSetting('placeholder'),
-      '#maxlength' => $this->getFieldSetting('max_length'),
-    );
-    $element['access_keyword'] = array(
-      '#title' => $this->t('Access Keyword'),
-      '#type' => 'textfield',
-      '#default_value' => isset($items[$delta]->value) ? $items[$delta]->value : NULL,
-      '#size' => $this->getSetting('size'),
-      '#placeholder' => $this->getSetting('placeholder'),
-      '#maxlength' => $this->getFieldSetting('max_length'),
-    );
-    $element['retrieval_keyword'] = array(
-      '#title' => $this->t('Retrieval Keyword'),
-      '#type' => 'textfield',
-      '#default_value' => isset($items[$delta]->value) ? $items[$delta]->value : NULL,
-      '#size' => $this->getSetting('size'),
-      '#placeholder' => $this->getSetting('placeholder'),
-      '#maxlength' => $this->getFieldSetting('max_length'),
-    );
-
+    $element['#type'] = 'fieldset';
+    $properties = $this->fieldDefinition->getFieldStorageDefinition()->getPropertyDefinitions();
+    // This loop is only appropriate since we know the fields all have the same type/config.
+    foreach ($properties as $key => $item) {
+      $element[$key] = [
+        '#type' => 'textfield',
+        '#title' => $item->getLabel(),
+        '#default_value' => isset($items[$delta]->{$key}) ? $items[$delta]->{$key} : NULL,
+        '#size' => $this->getSetting('size'),
+        '#required' => $item->isRequired(),
+      ];
+    }
     return $element;
   }
 

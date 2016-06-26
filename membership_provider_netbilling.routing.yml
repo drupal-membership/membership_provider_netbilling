@@ -15,3 +15,5 @@ membership_provider_netbilling.htpasswd_controller_get:
   requirements:
     _method: 'GET'
     _custom_access: '\Drupal\membership_provider_netbilling\Controller\HtpasswdController::access'
+  options:
+    no_cache: TRUE
