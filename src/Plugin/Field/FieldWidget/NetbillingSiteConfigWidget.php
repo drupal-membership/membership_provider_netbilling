@@ -78,7 +78,6 @@ class NetbillingSiteConfigWidget extends WidgetBase {
         '#title' => $item->getLabel(),
         '#default_value' => isset($items[$delta]->{$key}) ? $items[$delta]->{$key} : NULL,
         '#size' => $this->getSetting('size'),
-        '#required' => $item->isRequired(),
       ];
     }
     return $element;

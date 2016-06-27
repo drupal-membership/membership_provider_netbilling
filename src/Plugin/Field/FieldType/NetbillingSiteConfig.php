@@ -47,6 +47,7 @@ class NetbillingSiteConfig extends FieldItemBase {
       ->setLabel(new TranslatableMarkup('Site Tag'))
       ->setSetting('case_sensitive', $field_definition->getSetting('case_sensitive'))
       ->addConstraint('Length', array('max' => $max_length))
+      ->addConstraint('NetbillingUniqueSite')
       ->setRequired(TRUE);
     $properties['access_keyword'] = DataDefinition::create('string')
       ->setLabel(new TranslatableMarkup('Access Keyword'))

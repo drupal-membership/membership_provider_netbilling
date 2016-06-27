@@ -1,0 +1,10 @@
+<?php
+
+use Drupal\Core\Entity\EntityFieldManager;
+
+function membership_provider_netbilling_field_instances() {
+  /* @var EntityFieldManager $manager */
+  $manager = \Drupal::service('entity_field.manager');
+  $map = $manager->getFieldMapByFieldType('netbilling_site_config');
+  return $map;
+}
