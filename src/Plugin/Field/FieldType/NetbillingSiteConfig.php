@@ -64,6 +64,19 @@ class NetbillingSiteConfig extends FieldItemBase {
   }
 
   /**
+   * @inheritDoc
+   */
+  public function setValue($values, $notify = TRUE) {
+    // @see https://www.drupal.org/node/2349819
+    foreach ($values as $k => $v) {
+      if ($v == '') {
+        $values[$k] = NULL;
+      }
+    }
+    parent::setValue($values, $notify);
+  }
+
+  /**
    * {@inheritdoc}
    */
   public static function schema(FieldStorageDefinitionInterface $field_definition) {
@@ -73,21 +86,25 @@ class NetbillingSiteConfig extends FieldItemBase {
           'type' => $field_definition->getSetting('is_ascii') === TRUE ? 'varchar_ascii' : 'varchar',
           'length' => (int) $field_definition->getSetting('max_length'),
           'binary' => $field_definition->getSetting('case_sensitive'),
+          'not_null' => TRUE,
         ),
         'site_tag' => array(
           'type' => $field_definition->getSetting('is_ascii') === TRUE ? 'varchar_ascii' : 'varchar',
           'length' => (int) $field_definition->getSetting('max_length'),
           'binary' => $field_definition->getSetting('case_sensitive'),
+          'not_null' => TRUE,
         ),
         'access_keyword' => array(
           'type' => $field_definition->getSetting('is_ascii') === TRUE ? 'varchar_ascii' : 'varchar',
           'length' => (int) $field_definition->getSetting('max_length'),
           'binary' => $field_definition->getSetting('case_sensitive'),
+          'not_null' => TRUE,
         ),
         'retrieval_keyword' => array(
           'type' => $field_definition->getSetting('is_ascii') === TRUE ? 'varchar_ascii' : 'varchar',
           'length' => (int) $field_definition->getSetting('max_length'),
           'binary' => $field_definition->getSetting('case_sensitive'),
+          'not_null' => TRUE,
         ),
       ),
     );

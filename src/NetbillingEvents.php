@@ -31,4 +31,11 @@ final class NetbillingEvents {
    */
   const CHECK = 'membership_provider_netbilling.delete';
 
+  /**
+   * Config resolution
+   * 
+   * @Event
+   */
+  const RESOLVE_SITE_CONFIG = 'membership_provider_netbilling.resolver';
+
 }

@@ -6,18 +6,17 @@ use Drupal\Component\Plugin\PluginManagerInterface;
 use Drupal\Core\Access\AccessException;
 use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Access\AccessResultInterface;
+use Drupal\Core\Cache\CacheBackendInterface;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
-use Drupal\Core\Field\FieldItemList;
 use Drupal\membership_provider_netbilling\NetbillingEvent;
 use Drupal\membership_provider_netbilling\NetbillingEvents;
 use Drupal\membership_provider_netbilling\NetbillingQueueAddItem;
+use Drupal\membership_provider_netbilling\NetbillingResolveSiteEvent;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\RequestStack;
-use Drupal\Core\Queue\QueueFactory;
-use Drupal\Core\Queue\QueueInterface;
 
 /**
  * Class HtpasswdController.
@@ -65,12 +64,20 @@ class HtpasswdController extends ControllerBase implements ContainerInjectionInt
   private $eventDispatcher;
 
   /**
+   * The cache interface.
+   *
+   * @var \Drush\Cache\CacheInterface
+   */
+  private $cache;
+
+  /**
    * @inheritDoc
    */
-  public function __construct(RequestStack $request, PluginManagerInterface $provider_manager, EventDispatcherInterface $event_dispatcher) {
+  public function __construct(RequestStack $request, PluginManagerInterface $provider_manager, EventDispatcherInterface $event_dispatcher, CacheBackendInterface $cache) {
     $this->currentRequest = $request->getCurrentRequest();
     $this->providerManager = $provider_manager;
     $this->eventDispatcher = $event_dispatcher;
+    $this->cache = $cache;
   }
 
   /**
@@ -80,10 +87,16 @@ class HtpasswdController extends ControllerBase implements ContainerInjectionInt
     return new static(
       $container->get('request_stack'),
       $container->get('plugin.manager.membership_provider.processor'),
-      $container->get('event_dispatcher')
+      $container->get('event_dispatcher'),
+      $container->get('cache.default')
     );
   }
 
+  /**
+   * @param $cmd
+   * @return $this
+   * @throws \Exception
+   */
   private function setCommand($cmd) {
     $allowed = [
       'POST' => [
@@ -107,14 +120,24 @@ class HtpasswdController extends ControllerBase implements ContainerInjectionInt
     throw new \Exception('Invalid command.');
   }
 
+  /**
+   * @param $msg
+   * @return \Symfony\Component\HttpFoundation\Response
+   */
   private function errorResponse($msg) {
     return new Response($msg, 400, ['Content-Type' => 'text/plain']);
   }
 
+  /**
+   * @return \Symfony\Component\HttpFoundation\Response
+   */
   private function blankResponse() {
     return new Response('', 200, ['Content-Type' => 'text/plain']);
   }
 
+  /**
+   * @return mixed
+   */
   private function getCommandBase() {
     list($cmd_base) = explode('_', $this->cmd);
     return $cmd_base;
@@ -177,34 +200,35 @@ class HtpasswdController extends ControllerBase implements ContainerInjectionInt
     // Script must accept plural or singular form of user actions.
     switch ($this->getCommandBase()) {
       case 'append':
-        return $this->event_dispatch($users, NetbillingEvents::APPEND, ['hash' => $hash]);
+        return $this->event_dispatch(NetbillingEvents::APPEND, $users, ['hash' => $hash]);
       case 'delete':
-        return $this->event_dispatch($usernames, NetbillingEvents::DELETE);
+        return $this->event_dispatch(NetbillingEvents::DELETE, $usernames);
       case 'update':
-        return $this->event_dispatch($users, NetbillingEvents::UPDATE, ['hash' => $hash]);
+        return $this->event_dispatch(NetbillingEvents::UPDATE, $users, ['hash' => $hash]);
     }
   }
 
+  /**
+   * @param $site_tag
+   * @return array
+   */
   private function setSiteConfig($site_tag) {
-    $instances = membership_provider_netbilling_field_instances();
-    foreach ($instances as $entity_type => $def) {
-      foreach ($def as $field_name => $field_config) {
-        if ($ids = \Drupal::entityQuery($entity_type)->condition($field_name . '.site_tag', $site_tag, '=')->execute()) {
-          $this->siteConfig = \Drupal::entityTypeManager()
-            ->getStorage($entity_type)
-            ->load(reset($ids))
-            ->get($field_name)
-            ->getValue()[0];
-          break 2;
-        }
-      }
+    if ($cached = $this->cache->get('membership_provider_netbilling.site.' . $site_tag)) {
+      return $cached->data;
     }
-    if ($this->getSiteConfig()['access_keyword'] != $this->currentRequest->get('keyword')) {
+    $event = new NetbillingResolveSiteEvent($site_tag);
+    $this->eventDispatcher->dispatch(NetbillingEvents::RESOLVE_SITE_CONFIG, $event);
+    if ($event->getSiteConfig()['access_keyword'] != $this->currentRequest->get('keyword')) {
       throw new AccessException('ERROR: Invalid Access Keyword.', 403);
     }
+    $this->siteConfig = $event->getSiteConfig();
+    $this->cache->set('membership_provider_netbilling.site.' . $site_tag, $event->getSiteConfig());
     return $this->getSiteConfig();
   }
 
+  /**
+   * @return array
+   */
   private function getSiteConfig() {
     return $this->siteConfig;
   }
@@ -218,7 +242,7 @@ class HtpasswdController extends ControllerBase implements ContainerInjectionInt
    *
    * @returns Response
    */
-  private function event_dispatch($users, $method = NetbillingEvents::APPEND, $data = []) {
+  private function event_dispatch($method, $users, $data = []) {
     $event = new NetbillingEvent($this->getSiteConfig(), $users, $data);
     $this->eventDispatcher->dispatch($method, $event);
     if ($event->isFulfilled()) {
