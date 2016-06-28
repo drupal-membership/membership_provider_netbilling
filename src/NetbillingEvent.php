@@ -100,4 +100,8 @@ class NetbillingEvent extends Event {
     return $this->message;
   }
 
+  public function getUsers() {
+    return $this->users;
+  }
+
 }
