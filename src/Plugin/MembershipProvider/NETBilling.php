@@ -161,7 +161,6 @@ class NETBilling extends MembershipProviderBase implements MembershipProviderInt
       'body' => '',
     );
 
-    $client = new Client();
     foreach ($params as $field => $value) {
       if (is_array($value)) {
         foreach ($value as $v) {
@@ -174,6 +173,7 @@ class NETBilling extends MembershipProviderBase implements MembershipProviderInt
     }
     $options['body'] = trim($options['body'], ' \t\n\r\0\x0B\&');
     try {
+      $client = new Client();
       $result = $client->request('POST', self::ENDPOINT_REPORTING, $options);
       // Errors could also manifest in different response codes/headers.
       if ((reset($result->getHeader('Content-Type')) == 'text/plain') || ($retry = $result->getHeader('Retry-After'))) {
@@ -199,16 +199,27 @@ class NETBilling extends MembershipProviderBase implements MembershipProviderInt
   private function reporting_parse(ResponseInterface $result) {
     $members = [];
     $keys = [];
-    $csv = array_map('str_getcsv', explode("\n", trim($result->getBody()->getContents())));
+    $content = $result->getBody()->getContents();
+    $csv = array_map('str_getcsv', explode("\n", trim($content)));
     foreach ($csv as $row => $line) {
       if ($row === 0) {
         $keys = $line;
       }
       else {
         $member = array_combine($keys, $line);
+        // This mostly reflects wishful thinking. Additional site tags for a user
+        // are considered "secondary," yet the reporting interface only reports primary.
+        // This code is an effort to not clobber the additional entries if/when they are
+        // provided by the NETBilling API.
+        if (isset($members[$member['MEMBER_ID']])) {
+          $members[$member['MEMBER_ID']]['SITE_TAG'][] = $member['SITE_TAG'];
+          continue;
+        }
+        else {
+          $member['SITE_TAG'] = [$member['SITE_TAG']];
+        }
         $members[$member['MEMBER_ID']] = $member;
       }
-      $row++;
     }
     return $members;
   }
