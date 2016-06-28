@@ -49,7 +49,21 @@ class NetbillingEvent extends Event {
    */
   private $status = self::STATUS_NOT_FULFILLED;
 
+  /**
+   * Status message.
+   * 
+   * @var string
+   */
   private $message = '';
+
+  /**
+   * Set the status message.
+   * 
+   * @param string $message
+   */
+  public function setMessage($message) {
+    $this->message = $message;
+  }
 
   /**
    * @inheritDoc

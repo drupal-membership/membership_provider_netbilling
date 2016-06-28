@@ -11,7 +11,9 @@ use Drupal\membership_provider\Plugin\MembershipProviderBase;
 use Drupal\membership_provider\Plugin\MembershipProviderInterface;
 use Drupal\state_machine\Plugin\Workflow\Workflow;
 use GuzzleHttp\Client;
+use GuzzleHttp\Psr7\StreamWrapper;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Psr\Http\Message\ResponseInterface;
 
 /**
  * @MembershipProvider (
@@ -129,63 +131,86 @@ class NETBilling extends MembershipProviderBase implements MembershipProviderInt
    *
    * @see http://secure.netbilling.com/public/docs/merchant/public/directmode/repinterface1.5.html
    *
-   * @param $config NETBilling account config, keyed by:
-   *   account_id, site_tag and auth
    * @param $from int Unix timestamp for from date; defaults to 1 month ago
    * @param $to int Unix timestamp for to date; optional
+   * @param $sites array Override array of sites => keywords to retrieve on this account.
+   *
    * @returns mixed Array of array containing rows, and column headers (as keys => index), or FALSE on failure
    */
-  private function reporting_request($config, $from = NULL, $to = NULL) {
+  public function reporting_request($from = NULL, $to = NULL, $sites = []) {
+    $config = $this->configuration;
     $params = array(
       'account_id' => $config['account_id'],
       'site_tag' => $config['site_tag'],
       'authorization' => $config['reporting_keyword'],
     );
+    if ($sites) {
+      $params['site_tag'] = array_keys($sites);
+      $params['authorization'] = array_values($sites);
+    }
     $params = array_filter($params);
 
     // We must at the very least specify a "from" date
-    $from = $from ? $from : strtotime('now -1 month');
-    $params['changed_after'] = $this->dateFormatter->format($from, 'custom', 'Y-m-d H:i:s', 'UTC');
+    $params['expire_after'] = $from ?? $this->dateFormatter->format(time(), 'custom', 'Y-m-d H:i:s', 'UTC');
     if ($to) {
-      $params['transactions_before'] = $this->dateFormatter->format($to, 'custom', 'Y-m-d H:i:s', 'UTC');
+      $params['expire_before'] = $this->dateFormatter->format($to, 'custom', 'Y-m-d H:i:s', 'UTC');
     }
 
     $options = array(
       'headers' => array('User-Agent' => self::NETBILLING_UA),
+      'body' => '',
     );
 
     $client = new Client();
-    $request = $client->post(self::ENDPOINT_REPORTING, $options);
     foreach ($params as $field => $value) {
       if (is_array($value)) {
         foreach ($value as $v) {
-          $request->setPostField($field, $v);
+          $options['body'] .= http_build_query([$field => $v]) . '&';
         }
       }
       else {
-        $request->setPostField($field, $value);
+        $options['body'] .= http_build_query([$field => $value]) . '&';
       }
     }
+    $options['body'] = trim($options['body'], ' \t\n\r\0\x0B\&');
     try {
-      $result = $request->send();
+      $result = $client->request('POST', self::ENDPOINT_REPORTING, $options);
       // Errors could also manifest in different response codes/headers.
-      if (($result->getHeader('Content-Type') == 'text/plain') || ($retry = $result->getHeader('Retry-After'))) {
-        $msg = isset($retry)
-          ? $result->getBody() . ' / ' . $this->stringTranslation->translate('Retry after :s seconds', [':s' => $retry])
-          : $result->getBody();
-        // @todo - Implement caching the response and enforcing Retry-After interval.
-        throw new \Exception($msg, $result->getStatusCode());
+      if ((reset($result->getHeader('Content-Type')) == 'text/plain') || ($retry = $result->getHeader('Retry-After'))) {
+        if (isset($retry)) {
+          $msg = $result->getBody() . ' / ' . $this->stringTranslation->translate('Retry after :s seconds', [':s' => reset($retry)]);
+          $code = 429; // Too Many Requests
+          // @todo - Implement caching the response and enforcing Retry-After interval.
+        }
+        else {
+          list($code, $msg) = explode(' ', $result->getBody(), 2);
+        }
+        // Errors are indicated by the content-type of the response - code is first part of the body.
+        throw new \Exception($msg, $code);
       }
     }
     catch (\Exception $e) {
       $this->loggerChannelFactory->get('membership_provider_netbilling')->error($e->getMessage());
     }
 
-    /* @var \Psr\Http\Message\ResponseInterface $result */
-    $payload = array_map('str_getcsv', explode("\n", trim($result->getBody())));
-    // Column names are in the first row.
-    $columns = array_flip(array_shift($payload));
-
-    return array($payload, $columns);
+    return $this->reporting_parse($result);
   }
+
+  private function reporting_parse(ResponseInterface $result) {
+    $members = [];
+    $keys = [];
+    $csv = array_map('str_getcsv', explode("\n", trim($result->getBody()->getContents())));
+    foreach ($csv as $row => $line) {
+      if ($row === 0) {
+        $keys = $line;
+      }
+      else {
+        $member = array_combine($keys, $line);
+        $members[$member['MEMBER_ID']] = $member;
+      }
+      $row++;
+    }
+    return $members;
+  }
+
 }
