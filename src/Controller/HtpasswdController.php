@@ -13,6 +13,7 @@ use Drupal\membership_provider_netbilling\NetbillingEvent;
 use Drupal\membership_provider_netbilling\NetbillingEvents;
 use Drupal\membership_provider_netbilling\NetbillingQueueAddItem;
 use Drupal\membership_provider_netbilling\NetbillingResolveSiteEvent;
+use Drupal\membership_provider_netbilling\NetbillingUtilities;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Response;
@@ -165,7 +166,7 @@ class HtpasswdController extends ControllerBase implements ContainerInjectionInt
       'u' => array(),
     );
     $hash = FALSE;
-    $post = $this->parse_str_multiple($this->currentRequest->getContent()) + $default_param;
+    $post = NetbillingUtilities::parse_str_multiple($this->currentRequest->getContent()) + $default_param;
     // Follow the preferred source of passwords.
     $pw_sources = array(
       'p', // UNIX crypt

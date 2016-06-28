@@ -9,9 +9,9 @@ use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\membership\MembershipInterface;
 use Drupal\membership_provider\Plugin\MembershipProviderBase;
 use Drupal\membership_provider\Plugin\MembershipProviderInterface;
+use Drupal\membership_provider_netbilling\NetbillingUtilities;
 use Drupal\state_machine\Plugin\Workflow\Workflow;
 use GuzzleHttp\Client;
-use GuzzleHttp\Psr7\StreamWrapper;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Psr\Http\Message\ResponseInterface;
 
@@ -44,6 +44,16 @@ class NETBilling extends MembershipProviderBase implements MembershipProviderInt
    * The User-Agent header to send to NETBilling, based on their spec.
    */
   const NETBILLING_UA = 'Drupal/Version:2016.Jun.23';
+
+  /**
+   * Active membership state.
+   */
+  const STATUS_ACTIVE = 'active';
+
+  /**
+   * Inactive membership state.
+   */
+  const STATUS_INACTIVE = 'expired';
 
   /**
    * The date formatter service.
@@ -82,10 +92,17 @@ class NETBilling extends MembershipProviderBase implements MembershipProviderInt
   }
 
   /**
-   * @inheritDoc
+   * Resolves whether a particular NETBilling status is active.
+   * 
+   * @param $status
+   * @return string
    */
-  public static function getState(MembershipInterface $membership, Workflow $workflow) {
-    // TODO: Implement getState() method.
+  public static function flattenStatus($status) {
+    $active = [
+      'ACTIVE',
+      'ACTIVE/R',
+    ];
+    return in_array($status, $active, TRUE) ? self::STATUS_ACTIVE : self::STATUS_INACTIVE;
   }
 
   /**
@@ -126,6 +143,32 @@ class NETBilling extends MembershipProviderBase implements MembershipProviderInt
     return $duration;
   }
 
+  private function default_request_options() {
+    return array(
+      'headers' => array('User-Agent' => self::NETBILLING_UA),
+      'body' => '',
+    );
+  }
+
+  public function update_request($id, $cmd = 'GET') {
+    $config = $this->configuration;
+    $params = array(
+      'C_MEMBER_ID' => $id,
+      'C_ACCOUNT' => $config['account_id'] . ':' . $config['site_tag'],
+      'C_CONTROL_KEYWORD' => $config['access_keyword'],
+      'C_COMMAND' => $cmd,
+    );
+    $options = ['body' => http_build_query($params)] + $this->default_request_options();
+    try {
+      $client = new Client();
+      $response = $client->request('POST', self::MEMBER_UPDATE, $options)->getBody()->getContents();
+      return NetbillingUtilities::parse_str_multiple($response);
+    }
+    catch (\Throwable $e) {
+      $this->loggerChannelFactory->get('membership_provider_netbilling')->error($e->getMessage());
+    }
+  }
+
   /**
    * Make a request to the membership reporting endpoint.
    *
@@ -144,9 +187,9 @@ class NETBilling extends MembershipProviderBase implements MembershipProviderInt
       'site_tag' => $config['site_tag'],
       'authorization' => $config['reporting_keyword'],
     );
-    if ($sites) {
-      $params['site_tag'] = array_keys($sites);
-      $params['authorization'] = array_values($sites);
+    foreach ($sites as $site) {
+      $params['site_tag'][] = $site['site_tag'];
+      $params['authorization'][] = $site['reporting_keyword'];
     }
     $params = array_filter($params);
 
@@ -156,10 +199,7 @@ class NETBilling extends MembershipProviderBase implements MembershipProviderInt
       $params['expire_before'] = $this->dateFormatter->format($to, 'custom', 'Y-m-d H:i:s', 'UTC');
     }
 
-    $options = array(
-      'headers' => array('User-Agent' => self::NETBILLING_UA),
-      'body' => '',
-    );
+    $options = $this->default_request_options();
 
     foreach ($params as $field => $value) {
       if (is_array($value)) {
