@@ -19,6 +19,13 @@ class NetbillingResolveSiteEvent extends Event {
   private $siteConfig;
 
   /**
+   * The site entity.
+   *
+   * @var EntityInterface
+   */
+  private $siteEntity;
+
+  /**
    * @inheritDoc
    */
   public function __construct($site_tag) {
@@ -41,6 +48,20 @@ class NetbillingResolveSiteEvent extends Event {
    */
   public function setSiteConfig($config) {
     $this->siteConfig = $config;
+  }
+
+  /**
+   * @return \Drupal\Core\Entity\EntityInterface
+   */
+  public function getSiteEntity() {
+    return $this->siteEntity;
+  }
+
+  /**
+   * @param \Drupal\Core\Entity\EntityInterface $siteEntity
+   */
+  public function setSiteEntity($siteEntity) {
+    $this->siteEntity = $siteEntity;
   }
 
 }

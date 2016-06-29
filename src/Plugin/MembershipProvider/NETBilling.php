@@ -93,7 +93,7 @@ class NETBilling extends MembershipProviderBase implements MembershipProviderInt
 
   /**
    * Resolves whether a particular NETBilling status is active.
-   * 
+   *
    * @param $status
    * @return string
    */
@@ -143,6 +143,9 @@ class NETBilling extends MembershipProviderBase implements MembershipProviderInt
     return $duration;
   }
 
+  /**
+   * @return array
+   */
   private function default_request_options() {
     return array(
       'headers' => array('User-Agent' => self::NETBILLING_UA),
@@ -150,14 +153,30 @@ class NETBilling extends MembershipProviderBase implements MembershipProviderInt
     );
   }
 
-  public function update_request($id, $cmd = 'GET') {
+  /**
+   * Query the "member update" API, which can also be a non-update query.
+   * 
+   * @see https://secure.netbilling.com/public/docs/merchant/public/directmode/mupdate1.1.html
+   * 
+   * @param $identifier array An array with either an id or name key.
+   * @param string $cmd The command to issue, defaults to GET. (Others not yet implemented.)
+   * @param array $data Data to send via an update command.
+   * 
+   * @return array A structured array with keys as described at the URL above.
+   */
+  public function update_request($identifier, $cmd = 'GET', $data = []) {
     $config = $this->configuration;
     $params = array(
-      'C_MEMBER_ID' => $id,
       'C_ACCOUNT' => $config['account_id'] . ':' . $config['site_tag'],
       'C_CONTROL_KEYWORD' => $config['access_keyword'],
       'C_COMMAND' => $cmd,
     );
+    if (isset($identifier['id'])) {
+      $params['C_MEMBER_ID'] = $identifier['id'];
+    }
+    else if (isset($identifier['name'])) {
+      $params['C_MEMBER_LOGIN'] = $identifier['name'];
+    }
     $options = ['body' => http_build_query($params)] + $this->default_request_options();
     try {
       $client = new Client();
@@ -182,15 +201,16 @@ class NETBilling extends MembershipProviderBase implements MembershipProviderInt
    */
   public function reporting_request($from = NULL, $to = NULL, $sites = []) {
     $config = $this->configuration;
-    $params = array(
-      'account_id' => $config['account_id'],
-      'site_tag' => $config['site_tag'],
-      'authorization' => $config['reporting_keyword'],
-    );
+    $params = [];
     foreach ($sites as $site) {
       $params['site_tag'][] = $site['site_tag'];
-      $params['authorization'][] = $site['reporting_keyword'];
+      $params['authorization'][] = $site['retrieval_keyword'];
     }
+    $params += array(
+      'account_id' => $config['account_id'],
+      'site_tag' => $config['site_tag'],
+      'authorization' => $config['retrieval_keyword'],
+    );
     $params = array_filter($params);
 
     // We must at the very least specify a "from" date

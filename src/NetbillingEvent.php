@@ -2,6 +2,7 @@
 
 namespace Drupal\membership_provider_netbilling;
 
+use Drupal\Core\Entity\EntityInterface;
 use Symfony\Component\EventDispatcher\Event;
 
 /**
@@ -65,10 +66,7 @@ class NetbillingEvent extends Event {
     $this->message = $message;
   }
 
-  /**
-   * @inheritDoc
-   */
-  public function __construct($config, $users, $data = []) {
+  public function __construct($config, $users = [], $data = []) {
     $this->users = $users;
     $this->data = $data;
     $this->siteConfig = $config;
