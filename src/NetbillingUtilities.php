@@ -45,4 +45,42 @@ final class NetbillingUtilities {
     return $arr;
   }
 
+  /**
+   * Helper function to construct a NETBilling recurring period string.
+   *
+   * @param $interval array Interval array as returned by interval.module
+   * @param $strategy string 'code' or 'days', the type of value that should be returned.
+   *
+   * @throws \LogicException
+   *
+   * @returns string Contents for the recurring_period parameter.
+   */
+  public static function interval_code($interval, $strategy = 'code') {
+    switch ($interval['period']) {
+      case 'day':
+        $duration = $interval['interval'];
+        break;
+      case 'month':
+        // For initial terms, Netbilling only takes the term in days.
+        // For recurring periods, it will accept a "button maker expression"
+        if ($strategy == 'days') {
+          $end = new DateObject('now + ' . $interval['interval'] . ' months');
+          $now = new DateObject();
+          $duration = $end->difference($now, 'days');
+        }
+        else {
+          // As determined by Netbilling button maker.
+          // This uses the "same day every month" approach, not month == 30 days.
+          $duration = 'add_months((trunc(sysdate)+0.5),' . $interval['interval'] . ')';
+        }
+        break;
+      case 'week':
+        $duration = $interval['interval'] * 7;
+        break;
+      default:
+        throw new \LogicException('Invalid interval period specified.');
+    }
+    return $duration;
+  }
+
 }

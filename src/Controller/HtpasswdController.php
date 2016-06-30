@@ -6,12 +6,12 @@ use Drupal\Component\Plugin\PluginManagerInterface;
 use Drupal\Core\Access\AccessException;
 use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Access\AccessResultInterface;
+use Drupal\Core\Cache\Cache;
 use Drupal\Core\Cache\CacheBackendInterface;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\membership_provider_netbilling\NetbillingEvent;
 use Drupal\membership_provider_netbilling\NetbillingEvents;
-use Drupal\membership_provider_netbilling\NetbillingQueueAddItem;
 use Drupal\membership_provider_netbilling\NetbillingResolveSiteEvent;
 use Drupal\membership_provider_netbilling\NetbillingUtilities;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -67,7 +67,7 @@ class HtpasswdController extends ControllerBase implements ContainerInjectionInt
   /**
    * The cache interface.
    *
-   * @var \Drush\Cache\CacheInterface
+   * @var CacheBackendInterface
    */
   private $cache;
 
@@ -215,15 +215,20 @@ class HtpasswdController extends ControllerBase implements ContainerInjectionInt
    */
   private function setSiteConfig($site_tag) {
     if ($cached = $this->cache->get('membership_provider_netbilling.site.' . $site_tag)) {
-      return $cached->data;
+      $this->siteConfig = $cached->data;
     }
-    $event = new NetbillingResolveSiteEvent($site_tag);
-    $this->eventDispatcher->dispatch(NetbillingEvents::RESOLVE_SITE_CONFIG, $event);
-    if ($event->getSiteConfig()['access_keyword'] != $this->currentRequest->get('keyword')) {
+    else {
+      $event = new NetbillingResolveSiteEvent($site_tag);
+      $this->eventDispatcher->dispatch(NetbillingEvents::RESOLVE_SITE_CONFIG, $event);
+      $this->siteConfig = $event->getSiteConfig();
+      $this->cache->set('membership_provider_netbilling.site.' . $site_tag,
+        $event->getSiteConfig(),
+        Cache::PERMANENT,
+        [$event->getSiteEntity()->getEntityType()->id() . ':' . $event->getSiteEntity()->id()]);
+    }
+    if ($this->getSiteConfig()['access_keyword'] != $this->currentRequest->get('keyword')) {
       throw new AccessException('ERROR: Invalid Access Keyword.', 403);
     }
-    $this->siteConfig = $event->getSiteConfig();
-    $this->cache->set('membership_provider_netbilling.site.' . $site_tag, $event->getSiteConfig());
     return $this->getSiteConfig();
   }
 
