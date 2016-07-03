@@ -3,11 +3,12 @@
 namespace Drupal\membership_provider_netbilling\Plugin\MembershipProvider;
 
 use Drupal\Core\Datetime\DateFormatter;
-use Drupal\Core\Logger\LoggerChannelFactory;
+use Drupal\Core\DependencyInjection\DependencySerializationTrait;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Logger\LoggerChannelInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
-use Drupal\membership_provider\Plugin\MembershipProviderBase;
-use Drupal\membership_provider\Plugin\MembershipProviderInterface;
+use Drupal\membership_provider\Plugin\ConfigurableMembershipProviderBase;
 use Drupal\membership_provider_netbilling\NetbillingUtilities;
 use GuzzleHttp\Client;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -19,9 +20,10 @@ use Psr\Http\Message\ResponseInterface;
  *   label = @Translation("NETBilling")
  * )
  */
-class NETBilling extends MembershipProviderBase implements MembershipProviderInterface, ContainerFactoryPluginInterface {
+class NETBilling extends ConfigurableMembershipProviderBase implements ContainerFactoryPluginInterface {
 
   use StringTranslationTrait;
+  use DependencySerializationTrait;
 
   /**
    * The self-service API URL.
@@ -63,17 +65,17 @@ class NETBilling extends MembershipProviderBase implements MembershipProviderInt
   /**
    * Logger channel factory.
    *
-   * @var \Drupal\Core\Logger\LoggerChannelFactory
+   * @var \Drupal\Core\Logger\LoggerChannelInterface
    */
-  private $loggerChannelFactory;
+  private $loggerChannel;
 
   /**
    * @inheritDoc
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, DateFormatter $dateFormatter, LoggerChannelFactory $loggerChannelFactory) {
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, DateFormatter $dateFormatter, LoggerChannelInterface $loggerChannel) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     $this->dateFormatter = $dateFormatter;
-    $this->loggerChannelFactory = $loggerChannelFactory;
+    $this->loggerChannel = $loggerChannel;
   }
 
   /**
@@ -85,7 +87,7 @@ class NETBilling extends MembershipProviderBase implements MembershipProviderInt
       $plugin_id,
       $plugin_definition,
       $container->get('date.formatter'),
-      $container->get('logger.factory')
+      $container->get('logger.channel.membership_provider_netbilling')
     );
   }
 
@@ -115,13 +117,13 @@ class NETBilling extends MembershipProviderBase implements MembershipProviderInt
 
   /**
    * Query the "member update" API, which can also be a non-update query.
-   * 
+   *
    * @see https://secure.netbilling.com/public/docs/merchant/public/directmode/mupdate1.1.html
-   * 
+   *
    * @param $identifier array An array with either an id or name key.
    * @param string $cmd The command to issue, defaults to GET. (Others not yet implemented.)
    * @param array $data Data to send via an update command.
-   * 
+   *
    * @return array A structured array with keys as described at the URL above.
    */
   public function update_request($identifier, $cmd = 'GET', $data = []) {
@@ -144,7 +146,7 @@ class NETBilling extends MembershipProviderBase implements MembershipProviderInt
       return NetbillingUtilities::parse_str_multiple($response);
     }
     catch (\Throwable $e) {
-      $this->loggerChannelFactory->get('membership_provider_netbilling')->error($e->getMessage());
+      $this->loggerChannel->error($e->getMessage());
     }
   }
 
@@ -210,7 +212,7 @@ class NETBilling extends MembershipProviderBase implements MembershipProviderInt
       }
     }
     catch (\Exception $e) {
-      $this->loggerChannelFactory->get('membership_provider_netbilling')->error($e->getMessage());
+      $this->loggerChannel->error($e->getMessage());
     }
 
     return $this->reporting_parse($result);
@@ -242,6 +244,69 @@ class NETBilling extends MembershipProviderBase implements MembershipProviderInt
       }
     }
     return $members;
+  }
+
+  /**
+   * @inheritDoc
+   */
+  public function buildConfigurationForm(array $form, FormStateInterface $form_state) {
+    return [];
+  }
+
+  /**
+   * @inheritDoc
+   */
+  public function validateConfigurationForm(array &$form, FormStateInterface $form_state) {
+    // TODO: Implement validateConfigurationForm() method.
+  }
+
+  /**
+   * @inheritDoc
+   */
+  public function submitConfigurationForm(array &$form, FormStateInterface $form_state) {
+    // TODO: Implement submitConfigurationForm() method.
+  }
+
+  /**
+   * @inheritDoc
+   */
+  public function getConfiguration() {
+    // TODO: Implement getConfiguration() method.
+  }
+
+  /**
+   * @inheritDoc
+   */
+  public function setConfiguration(array $configuration) {
+    // TODO: Implement setConfiguration() method.
+  }
+
+  /**
+   * @inheritDoc
+   */
+  public function defaultConfiguration() {
+    // TODO: Implement defaultConfiguration() method.
+  }
+
+  /**
+   * @inheritDoc
+   */
+  public function calculateDependencies() {
+    // TODO: Implement calculateDependencies() method.
+  }
+
+  /**
+   * @inheritDoc
+   */
+  public function getPluginId() {
+    // TODO: Implement getPluginId() method.
+  }
+
+  /**
+   * @inheritDoc
+   */
+  public function getPluginDefinition() {
+    // TODO: Implement getPluginDefinition() method.
   }
 
 }
