@@ -250,63 +250,34 @@ class NETBilling extends ConfigurableMembershipProviderBase implements Container
    * @inheritDoc
    */
   public function buildConfigurationForm(array $form, FormStateInterface $form_state) {
-    return [];
-  }
-
-  /**
-   * @inheritDoc
-   */
-  public function validateConfigurationForm(array &$form, FormStateInterface $form_state) {
-    // TODO: Implement validateConfigurationForm() method.
-  }
-
-  /**
-   * @inheritDoc
-   */
-  public function submitConfigurationForm(array &$form, FormStateInterface $form_state) {
-    // TODO: Implement submitConfigurationForm() method.
-  }
-
-  /**
-   * @inheritDoc
-   */
-  public function getConfiguration() {
-    // TODO: Implement getConfiguration() method.
-  }
-
-  /**
-   * @inheritDoc
-   */
-  public function setConfiguration(array $configuration) {
-    // TODO: Implement setConfiguration() method.
+    $config = [
+      'site_tag' => $this->t('Site Tag'),
+      'account_id' => $this->t('Account ID'),
+      'access_keyword' => $this->t('Access Keyword'),
+      'retrieval_keyword' => $this->t('Data Retrieval Keyword'),
+    ];
+    $values = $this->getConfiguration() + $this->defaultConfiguration();
+    foreach ($config as $key => $label) {
+      $form[$key] = [
+        '#type' => 'textfield',
+        '#title' => $label,
+        '#default_value' => $values[$key],
+        '#size' => 60,
+      ];
+    }
+    return $form;
   }
 
   /**
    * @inheritDoc
    */
   public function defaultConfiguration() {
-    // TODO: Implement defaultConfiguration() method.
-  }
-
-  /**
-   * @inheritDoc
-   */
-  public function calculateDependencies() {
-    // TODO: Implement calculateDependencies() method.
-  }
-
-  /**
-   * @inheritDoc
-   */
-  public function getPluginId() {
-    // TODO: Implement getPluginId() method.
-  }
-
-  /**
-   * @inheritDoc
-   */
-  public function getPluginDefinition() {
-    // TODO: Implement getPluginDefinition() method.
+    return [
+      'site_tag' => '',
+      'account_id' => '',
+      'access_keyword' => '',
+      'retrieval_keyword' => '',
+    ];
   }
 
 }
