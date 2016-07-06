@@ -1,5 +1,5 @@
 {
-  "name": "drupal-membership/provider-netbilling",
+  "name": "drupal-membership/membership_provider_netbilling",
   "type": "drupal-module",
   "description": "Membership Provider for NETBilling",
   "keywords": ["Drupal"],
