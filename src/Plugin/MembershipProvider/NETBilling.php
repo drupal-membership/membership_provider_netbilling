@@ -157,7 +157,7 @@ class NETBilling extends ConfigurableMembershipProviderBase implements Container
    *
    * @param $from int Unix timestamp for from date; defaults to 1 month ago
    * @param $to int Unix timestamp for to date; optional
-   * @param $sites array Override array of sites => keywords to retrieve on this account.
+   * @param $sites array Override array of site configurations retrieve on this account.
    *
    * @returns mixed Array of array containing rows, and column headers (as keys => index), or FALSE on failure
    */
@@ -229,11 +229,12 @@ class NETBilling extends ConfigurableMembershipProviderBase implements Container
       }
       else {
         $member = array_combine($keys, $line);
-        // This mostly reflects wishful thinking. Additional site tags for a user
-        // are considered "secondary," yet the reporting interface only reports primary.
-        // This code is an effort to not clobber the additional entries if/when they are
-        // provided by the NETBilling API.
+
         if (isset($members[$member['MEMBER_ID']])) {
+          // This mostly reflects wishful thinking. Additional site tags for a user
+          // are considered "secondary," yet the reporting interface only reports primary.
+          // This code is an effort to not clobber the additional entries if/when they are
+          // provided by the NETBilling API.
           $members[$member['MEMBER_ID']]['SITE_TAG'][] = $member['SITE_TAG'];
           continue;
         }
