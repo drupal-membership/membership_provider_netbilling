@@ -1,14 +1,10 @@
 {
-  "name": "drupal/membership_provider_netbilling",
+  "name": "drupal-membership/provider-netbilling",
   "type": "drupal-module",
   "description": "Membership Provider for NETBilling",
   "keywords": ["Drupal"],
   "license": "GPL-2.0+",
-  "homepage": "https://www.drupal.org/project/membership_provider_netbilling",
+  "homepage": "https://github.com/drupal-membership/provider-netbilling",
   "minimum-stability": "dev",
-  "support": {
-    "issues": "http://drupal.org/project/issues/membership_provider_netbilling",
-    "source": "http://cgit.drupalcode.org/membership_provider_netbilling"
-  },
   "require": { }
 }
