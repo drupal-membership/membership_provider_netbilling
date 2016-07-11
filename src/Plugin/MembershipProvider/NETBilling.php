@@ -13,6 +13,8 @@ use Drupal\membership_provider_netbilling\NetbillingUtilities;
 use GuzzleHttp\Client;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Psr\Http\Message\ResponseInterface;
+use Drupal\membership_provider\Annotation\MembershipProvider;
+use Drupal\Core\Annotation\Translation;
 
 /**
  * @MembershipProvider (
@@ -38,7 +40,27 @@ class NETBilling extends ConfigurableMembershipProviderBase implements Container
   /**
    * The member update API URL.
    */
-  const MEMBER_UPDATE = 'https://secure.netbilling.com/gw/native/mupdate1.1';
+  const ENDPOINT_MEMBER_UPDATE = 'https://secure.netbilling.com/gw/native/mupdate1.1';
+
+  /**
+   * The transaction reporting endpoint.
+   */
+  const ENDPOINT_TRANSACTIONS = 'https://secure.netbilling.com/gw/reports/transaction1.5';
+
+  /**
+   * Member reporting endpoint identifier.
+   */
+  const REPORTING_TYPE_MEMBERS = 'member';
+
+  /**
+   * Transactions endpoint identifier.
+   */
+  const REPORTING_TYPE_TRANSACTIONS = 'transactions';
+
+  /**
+   * The timestamp acceptable to the member/transaction reporting endpoint.
+   */
+  const REPORTING_TIME_FORMAT = 'Y-m-d H:i:s';
 
   /**
    * The User-Agent header to send to NETBilling, based on their spec.
@@ -60,14 +82,14 @@ class NETBilling extends ConfigurableMembershipProviderBase implements Container
    *
    * @var \Drupal\Core\Datetime\DateFormatter
    */
-  private $dateFormatter;
+  protected $dateFormatter;
 
   /**
    * Logger channel factory.
    *
    * @var \Drupal\Core\Logger\LoggerChannelInterface
    */
-  private $loggerChannel;
+  protected $loggerChannel;
 
   /**
    * @inheritDoc
@@ -108,9 +130,11 @@ class NETBilling extends ConfigurableMembershipProviderBase implements Container
   /**
    * @return array
    */
-  private function default_request_options() {
+  protected function default_request_options() {
     return array(
-      'headers' => array('User-Agent' => self::NETBILLING_UA),
+      'headers' => [
+        'User-Agent' => self::NETBILLING_UA,
+      ],
       'body' => '',
     );
   }
@@ -123,8 +147,9 @@ class NETBilling extends ConfigurableMembershipProviderBase implements Container
    * @param $identifier array An array with either an id or name key.
    * @param string $cmd The command to issue, defaults to GET. (Others not yet implemented.)
    * @param array $data Data to send via an update command.
-   *
    * @return array A structured array with keys as described at the URL above.
+   *
+   * @todo Implement sending $data
    */
   public function update_request($identifier, $cmd = 'GET', $data = []) {
     $config = $this->configuration;
@@ -142,7 +167,7 @@ class NETBilling extends ConfigurableMembershipProviderBase implements Container
     $options = ['body' => http_build_query($params)] + $this->default_request_options();
     try {
       $client = new Client();
-      $response = $client->request('POST', self::MEMBER_UPDATE, $options)->getBody()->getContents();
+      $response = $client->request('POST', self::ENDPOINT_MEMBER_UPDATE, $options)->getBody()->getContents();
       return NetbillingUtilities::parse_str_multiple($response);
     }
     catch (\Throwable $e) {
@@ -151,36 +176,64 @@ class NETBilling extends ConfigurableMembershipProviderBase implements Container
   }
 
   /**
-   * Make a request to the membership reporting endpoint.
+   * Format a reporting-endpoint acceptable date.
+   *
+   * @param $timestamp string UNIX timestamp, converted in UTC
+   * @return string The formatted date.
+   */
+  protected function formatReportingDate($timestamp) {
+    return $this->dateFormatter->format($timestamp, 'custom', self::REPORTING_TIME_FORMAT, 'UTC');
+  }
+  /**
+   * Make a request to the membership or transactions reporting endpoint.
+   *
+   * @param $service string Service to query - members|transactions
+   * @param $from int Unix timestamp for from date; defaults to now.
+   * @param $to int Unix timestamp for to date; optional
+   * @param $sites array Override array of site configurations retrieve on this account.
+   * @throws \Exception
+   * @returns mixed Array of array containing rows, and column headers (as keys => index), or FALSE on failure
+   */
+  public function reportingRequest(string $service = self::REPORTING_TYPE_MEMBERS, $from = NULL, $to = NULL, $sites = []) {
+    $keyword = $service == self::REPORTING_TYPE_MEMBERS ? 'expire' : 'transactions';
+    // We must at the very least specify a "from" date
+    $params[$keyword . '_after'] = $this->formatReportingDate($from ?: time());
+    if ($to) {
+      $params[$keyword . '_before'] = $this->formatReportingDate($to);
+    }
+
+    return $this->sendReportingRequest(
+      $params,
+      $sites,
+      $service == 'members' ? self::ENDPOINT_REPORTING : self::ENDPOINT_TRANSACTIONS
+    );
+  }
+
+  /**
+   * Make a request to the membership or transaction reporting endpoint.
    *
    * @see http://secure.netbilling.com/public/docs/merchant/public/directmode/repinterface1.5.html
    *
-   * @param $from int Unix timestamp for from date; defaults to 1 month ago
-   * @param $to int Unix timestamp for to date; optional
+   * @param $params array Array of parameters to build into the request.
    * @param $sites array Override array of site configurations retrieve on this account.
-   *
+   * @param $endpoint string Endpoint to query. Member Reporting and Transaction
+   *   share similar request parameters and response shapes.
+   * @throws \Exception
    * @returns mixed Array of array containing rows, and column headers (as keys => index), or FALSE on failure
    */
-  public function reporting_request($from = NULL, $to = NULL, $sites = []) {
-    $config = $this->configuration;
-    $params = [];
+  protected function sendReportingRequest($params, $sites = [], $endpoint) {
+    $config = $this->getConfiguration();
+    $localParams = [];
     foreach ($sites as $site) {
-      $params['site_tag'][] = $site['site_tag'];
-      $params['authorization'][] = $site['retrieval_keyword'];
+      $localParams['site_tag'][] = $site['site_tag'];
+      $localParams['authorization'][] = $site['retrieval_keyword'];
     }
-    $params += array(
+    $localParams += array(
       'account_id' => $config['account_id'],
       'site_tag' => $config['site_tag'],
       'authorization' => $config['retrieval_keyword'],
     );
-    $params = array_filter($params);
-
-    // We must at the very least specify a "from" date
-    $params['expire_after'] = $from ?? $this->dateFormatter->format(time(), 'custom', 'Y-m-d H:i:s', 'UTC');
-    if ($to) {
-      $params['expire_before'] = $this->dateFormatter->format($to, 'custom', 'Y-m-d H:i:s', 'UTC');
-    }
-
+    $params = array_filter($localParams) + $params;
     $options = $this->default_request_options();
 
     foreach ($params as $field => $value) {
@@ -193,10 +246,11 @@ class NETBilling extends ConfigurableMembershipProviderBase implements Container
         $options['body'] .= http_build_query([$field => $value]) . '&';
       }
     }
-    $options['body'] = trim($options['body'], ' \t\n\r\0\x0B\&');
+    $options['body'] = trim($options['body'], " \t\n\r\0\x0B\\&");
+
     try {
       $client = new Client();
-      $result = $client->request('POST', self::ENDPOINT_REPORTING, $options);
+      $result = $client->request('POST', $endpoint, $options);
       // Errors could also manifest in different response codes/headers.
       if ((reset($result->getHeader('Content-Type')) == 'text/plain') || ($retry = $result->getHeader('Retry-After'))) {
         if (isset($retry)) {
@@ -213,13 +267,20 @@ class NETBilling extends ConfigurableMembershipProviderBase implements Container
     }
     catch (\Exception $e) {
       $this->loggerChannel->error($e->getMessage());
+      throw $e;
     }
 
-    return $this->reporting_parse($result);
+    return $this->parseReport($result);
   }
 
-  private function reporting_parse(ResponseInterface $result) {
-    $members = [];
+  /**
+   * Parser for CSV-style responses.
+   *
+   * @param \Psr\Http\Message\ResponseInterface $result
+   * @return array Array of members, with keys/values in associative arrays.
+   */
+  protected function parseReport(ResponseInterface $result) {
+    $results = [];
     $keys = [];
     $content = $result->getBody()->getContents();
     $csv = array_map('str_getcsv', explode("\n", trim($content)));
@@ -227,24 +288,30 @@ class NETBilling extends ConfigurableMembershipProviderBase implements Container
       if ($row === 0) {
         $keys = $line;
       }
-      else {
+      elseif (in_array('MEMBER_USER_NAME', $keys)) {
+        // This is a member reporting report
         $member = array_combine($keys, $line);
 
-        if (isset($members[$member['MEMBER_ID']])) {
+        if (isset($results[$member['MEMBER_ID']])) {
           // This mostly reflects wishful thinking. Additional site tags for a user
           // are considered "secondary," yet the reporting interface only reports primary.
           // This code is an effort to not clobber the additional entries if/when they are
           // provided by the NETBilling API.
-          $members[$member['MEMBER_ID']]['SITE_TAG'][] = $member['SITE_TAG'];
+          $results[$member['MEMBER_ID']]['SITE_TAG'][] = $member['SITE_TAG'];
           continue;
         }
         else {
           $member['SITE_TAG'] = [$member['SITE_TAG']];
         }
-        $members[$member['MEMBER_ID']] = $member;
+        $results[$member['MEMBER_ID']] = $member;
+      }
+      else {
+        // Transaction reporting request
+        $trans = array_combine($keys, $line);
+        $results[$trans['TRANS_ID']] = $trans;
       }
     }
-    return $members;
+    return $results;
   }
 
   /**
