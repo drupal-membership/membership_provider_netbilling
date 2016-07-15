@@ -184,6 +184,7 @@ class NETBilling extends ConfigurableMembershipProviderBase implements Container
   protected function formatReportingDate($timestamp) {
     return $this->dateFormatter->format($timestamp, 'custom', self::REPORTING_TIME_FORMAT, 'UTC');
   }
+
   /**
    * Make a request to the membership or transactions reporting endpoint.
    *
@@ -192,7 +193,7 @@ class NETBilling extends ConfigurableMembershipProviderBase implements Container
    * @param $to int Unix timestamp for to date; optional
    * @param $sites array Override array of site configurations retrieve on this account.
    * @throws \Exception
-   * @returns mixed Array of array containing rows, and column headers (as keys => index), or FALSE on failure
+   * @returns mixed Array of results.
    */
   public function reportingRequest(string $service = self::REPORTING_TYPE_MEMBERS, $from = NULL, $to = NULL, $sites = []) {
     $keyword = $service == self::REPORTING_TYPE_MEMBERS ? 'expire' : 'transactions';
