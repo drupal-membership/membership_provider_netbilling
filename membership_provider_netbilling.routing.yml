@@ -17,3 +17,12 @@ membership_provider_netbilling.htpasswd_controller_get:
     _custom_access: '\Drupal\membership_provider_netbilling\Controller\HtpasswdController::access'
   options:
     no_cache: TRUE
+membership_provider_netbilling.hosted_payment_controller_process:
+  path: '/membership_provider_netbilling'
+  defaults:
+    _controller: '\Drupal\membership_provider_netbilling\Controller\HostedPaymentController::process'
+    _title: 'Hosted Payment Callback'
+  requirements:
+    _permission: 'access content'
+  options:
+    no_cache: TRUE

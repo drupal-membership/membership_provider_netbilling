@@ -324,6 +324,7 @@ class NETBilling extends ConfigurableMembershipProviderBase implements Container
       'account_id' => $this->t('Account ID'),
       'access_keyword' => $this->t('Access Keyword'),
       'retrieval_keyword' => $this->t('Data Retrieval Keyword'),
+      'integrity_key' => $this->t('Integrity Key'),
     ];
     $values = $this->getConfiguration() + $this->defaultConfiguration();
     foreach ($config as $key => $label) {
@@ -346,6 +347,7 @@ class NETBilling extends ConfigurableMembershipProviderBase implements Container
       'account_id' => '',
       'access_keyword' => '',
       'retrieval_keyword' => '',
+      'integrity_key' => '',
     ];
   }
 

@@ -21,7 +21,7 @@ class NetbillingResolveSiteEvent extends Event {
   /**
    * The site entity.
    *
-   * @var EntityInterface
+   * @var \Drupal\Core\Entity\EntityInterface
    */
   private $siteEntity;
 
@@ -43,7 +43,7 @@ class NetbillingResolveSiteEvent extends Event {
 
   /**
    * Set the site config.
-   * 
+   *
    * @param $config
    */
   public function setSiteConfig($config) {

@@ -6,14 +6,13 @@ use Drupal\Component\Plugin\PluginManagerInterface;
 use Drupal\Core\Access\AccessException;
 use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Access\AccessResultInterface;
-use Drupal\Core\Cache\Cache;
 use Drupal\Core\Cache\CacheBackendInterface;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\membership_provider_netbilling\NetbillingEvent;
 use Drupal\membership_provider_netbilling\NetbillingEvents;
-use Drupal\membership_provider_netbilling\NetbillingResolveSiteEvent;
 use Drupal\membership_provider_netbilling\NetbillingUtilities;
+use Drupal\membership_provider_netbilling\SiteResolver;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Response;
@@ -34,51 +33,51 @@ class HtpasswdController extends ControllerBase implements ContainerInjectionInt
   /**
    * @var \Symfony\Component\HttpFoundation\Request
    */
-  private $currentRequest;
+  protected $currentRequest;
 
   /**
    * The current command.
    *
    * @var string
    */
-  private $cmd = '';
+  protected $cmd = '';
 
   /**
    * The membership provider plugin manager.
    *
    * @var \Drupal\Component\Plugin\PluginManagerInterface
    */
-  private $providerManager;
+  protected $providerManager;
 
   /**
    * The site config.
    *
    * @var array
    */
-  private $siteConfig;
+  protected $siteConfig;
 
   /**
    * The event dispatcher.
    *
    * @var \Symfony\Component\EventDispatcher\EventDispatcherInterface
    */
-  private $eventDispatcher;
+  protected $eventDispatcher;
 
   /**
-   * The cache interface.
+   * The site resolver.
    *
-   * @var CacheBackendInterface
+   * @var \Drupal\membership_provider_netbilling\SiteResolver
    */
-  private $cache;
+  protected $siteResolver;
 
   /**
    * @inheritDoc
    */
-  public function __construct(RequestStack $request, PluginManagerInterface $provider_manager, EventDispatcherInterface $event_dispatcher, CacheBackendInterface $cache) {
+  public function __construct(RequestStack $request, PluginManagerInterface $provider_manager, EventDispatcherInterface $event_dispatcher, SiteResolver $siteResolver) {
     $this->currentRequest = $request->getCurrentRequest();
     $this->providerManager = $provider_manager;
     $this->eventDispatcher = $event_dispatcher;
-    $this->cache = $cache;
+    $this->siteResolver = $siteResolver;
   }
 
   /**
@@ -89,7 +88,7 @@ class HtpasswdController extends ControllerBase implements ContainerInjectionInt
       $container->get('request_stack'),
       $container->get('plugin.manager.membership_provider.processor'),
       $container->get('event_dispatcher'),
-      $container->get('cache.default')
+      $container->get('membership_provider_netbilling.site_resolver')
     );
   }
 
@@ -106,10 +105,11 @@ class HtpasswdController extends ControllerBase implements ContainerInjectionInt
         'delete_user',
         'delete_users',
         'update_all_users',
-      ],
-      'GET' => [
+        // These initially looked like GET, but are sent as POST.
         'check_user',
         'check_users',
+      ],
+      'GET' => [
         // 'list_all_users', // Commented-out in source file.
         'test',
       ]
@@ -159,7 +159,9 @@ class HtpasswdController extends ControllerBase implements ContainerInjectionInt
       $this->setSiteConfig($site_tag);
     }
     catch (\Throwable $e) {
-      return new Response($e->getMessage(), 400);
+      // Sanitize the underlying error.
+      // @todo - Log.
+      return new Response('Unable to process', 400);
     }
 
     $default_param = array(
@@ -214,21 +216,8 @@ class HtpasswdController extends ControllerBase implements ContainerInjectionInt
    * @return array
    */
   private function setSiteConfig($site_tag) {
-    if ($cached = $this->cache->get('membership_provider_netbilling.site.' . $site_tag)) {
-      $this->siteConfig = $cached->data;
-    }
-    else {
-      $event = new NetbillingResolveSiteEvent($site_tag);
-      $this->eventDispatcher->dispatch(NetbillingEvents::RESOLVE_SITE_CONFIG, $event);
-      $this->siteConfig = $event->getSiteConfig();
-      $this->cache->set('membership_provider_netbilling.site.' . $site_tag,
-        $event->getSiteConfig(),
-        Cache::PERMANENT,
-        [$event->getSiteEntity()->getEntityType()->id() . ':' . $event->getSiteEntity()->id()]);
-    }
-    if ($this->getSiteConfig()['access_keyword'] != $this->currentRequest->get('keyword')) {
-      throw new AccessException('ERROR: Invalid Access Keyword.', 403);
-    }
+    $this->siteConfig = $this->siteResolver->getSiteConfig($site_tag);
+    $this->siteResolver->validateSiteKeyword($site_tag, $this->currentRequest->get('keyword'));
     return $this->getSiteConfig();
   }
 
@@ -324,47 +313,6 @@ class HtpasswdController extends ControllerBase implements ContainerInjectionInt
       return AccessResult::forbidden();
     }
     return AccessResult::allowed();
-  }
-
-  /**
-   * Helper function to parse a query string in a Perl-like fashion.
-   * The model Netbilling CGI script uses Perl's param() method for this.
-   *
-   * @see http://www.php.net/manual/en/function.parse-str.php#76792
-   * @see http://perldoc.perl.org/CGI.html#FETCHING-THE-VALUE-OR-VALUES-OF-A-SINGLE-NAMED-PARAMETER:
-   *
-   * @param string $str The string to parse
-   *
-   * @return array The parsed string.
-   */
-  private function parse_str_multiple($str) {
-    $arr = array();
-
-    $pairs = explode('&', $str);
-
-    // Loop through each pair
-    foreach ($pairs as $i) {
-      // Split into name and value
-      list($name,$value) = explode('=', $i, 2);
-      $value = urldecode($value);
-
-      // If name already exists
-      if (isset($arr[$name])) {
-        // Stick multiple values into an array
-        if (is_array($arr[$name])) {
-          $arr[$name][] = $value;
-        }
-        else {
-          $arr[$name] = array($arr[$name], $value);
-        }
-      }
-      // Otherwise, simply stick it in a scalar
-      else {
-        $arr[$name] = $value;
-      }
-    }
-
-    return $arr;
   }
 
 }

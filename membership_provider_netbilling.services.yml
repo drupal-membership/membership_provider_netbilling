@@ -2,3 +2,7 @@ services:
   logger.channel.membership_provider_netbilling:
     parent: logger.channel_base
     arguments: ['membership_provider_netbilling']
+  membership_provider_netbilling.site_resolver:
+    class: Drupal\membership_provider_netbilling\SiteResolver
+    arguments: ["@event_dispatcher", "@cache.default"]
+
