@@ -9,6 +9,14 @@ namespace Drupal\membership_provider_netbilling;
  *
  * @package Drupal\membership_provider_netbilling
  */
+/**
+ * Class NetbillingEvents
+ * @package Drupal\membership_provider_netbilling
+ */
+/**
+ * Class NetbillingEvents
+ * @package Drupal\membership_provider_netbilling
+ */
 final class NetbillingEvents {
 
   /**
@@ -32,10 +40,18 @@ final class NetbillingEvents {
   const CHECK = 'membership_provider_netbilling.delete';
 
   /**
+   * Return from the hosted payment page.
+   */
+  const HOSTED_RETURN = 'membership_provider_netbilling.return';
+
+  /**
    * Config resolution
-   * 
-   * @Event
    */
   const RESOLVE_SITE_CONFIG = 'membership_provider_netbilling.resolver';
+
+  /**
+   * Resolve config by entity.
+   */
+  const RESOLVE_SITE_CONFIG_ENTITY = 'membership_provider_netbilling.resolver_entity';
 
 }

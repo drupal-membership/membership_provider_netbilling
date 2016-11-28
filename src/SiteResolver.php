@@ -6,6 +6,7 @@ use Drupal\Component\EventDispatcher\ContainerAwareEventDispatcher;
 use Drupal\Core\Access\AccessException;
 use Drupal\Core\Cache\Cache;
 use Drupal\Core\Cache\CacheBackendInterface;
+use Drupal\Core\Entity\EntityInterface;
 
 /**
  * Class SiteResolver.
@@ -43,7 +44,8 @@ class SiteResolver {
    * @return array|null
    */
   public function getSiteConfig($site_tag) {
-    if ($cached = $this->cache->get('membership_provider_netbilling.site.' . $site_tag)) {
+    $key = 'membership_provider_netbilling.site.' . $site_tag;
+    if ($cached = $this->cache->get($key)) {
       $siteConfig = $cached->data;
     }
     else {
@@ -52,7 +54,33 @@ class SiteResolver {
       if (!$siteConfig = $event->getSiteConfig()) {
         return NULL;
       }
-      $this->cache->set('membership_provider_netbilling.site.' . $site_tag,
+      $this->cache->set($key,
+        $event->getSiteConfig(),
+        Cache::PERMANENT,
+        [$event->getSiteEntity()->getEntityType()->id() . ':' . $event->getSiteEntity()->id()]);
+    }
+    return $siteConfig;
+  }
+
+  /**
+   * Resolve a site config by entity.
+   *
+   * @param \Drupal\Core\Entity\EntityInterface $entity
+   * @return array|null
+   */
+  public function getSiteConfigByEntity(EntityInterface $entity) {
+    $key = 'membership_provider_netbilling.entity.' . $entity->id();
+    if ($cached = $this->cache->get($key)) {
+      $siteConfig = $cached->data;
+    }
+    else {
+      $event = new NetbillingResolveSiteEvent();
+      $event->setSiteEntity($entity);
+      $this->event_dispatcher->dispatch(NetbillingEvents::RESOLVE_SITE_CONFIG_ENTITY, $event);
+      if (!$siteConfig = $event->getSiteConfig()) {
+        return NULL;
+      }
+      $this->cache->set($key,
         $event->getSiteConfig(),
         Cache::PERMANENT,
         [$event->getSiteEntity()->getEntityType()->id() . ':' . $event->getSiteEntity()->id()]);

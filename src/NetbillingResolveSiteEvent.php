@@ -28,8 +28,10 @@ class NetbillingResolveSiteEvent extends Event {
   /**
    * @inheritDoc
    */
-  public function __construct($site_tag) {
-    $this->siteConfig = ['site_tag' => $site_tag];
+  public function __construct($site_tag = NULL) {
+    if ($site_tag) {
+      $this->siteConfig = ['site_tag' => $site_tag];
+    }
   }
 
   /**

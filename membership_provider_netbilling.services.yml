@@ -5,4 +5,3 @@ services:
   membership_provider_netbilling.site_resolver:
     class: Drupal\membership_provider_netbilling\SiteResolver
     arguments: ["@event_dispatcher", "@cache.default"]
-

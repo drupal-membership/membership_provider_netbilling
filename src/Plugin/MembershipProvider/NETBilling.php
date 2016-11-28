@@ -154,17 +154,20 @@ class NETBilling extends ConfigurableMembershipProviderBase implements Container
   public function update_request($identifier, $cmd = 'GET', $data = []) {
     $config = $this->configuration;
     $params = array(
-      'C_ACCOUNT' => $config['account_id'] . ':' . $config['site_tag'],
+      'C_ACCOUNT' => $config['account_id'],
       'C_CONTROL_KEYWORD' => $config['access_keyword'],
       'C_COMMAND' => $cmd,
     );
+    if (isset($config['site_tag'])) {
+      $params['C_ACCOUNT'] .= ':' . $config['site_tag'];
+    }
     if (isset($identifier['id'])) {
       $params['C_MEMBER_ID'] = $identifier['id'];
     }
     else if (isset($identifier['name'])) {
       $params['C_MEMBER_LOGIN'] = $identifier['name'];
     }
-    $options = ['body' => http_build_query($params)] + $this->default_request_options();
+    $options = ['body' => http_build_query($params + $data)] + $this->default_request_options();
     try {
       $client = new Client();
       $response = $client->request('POST', self::ENDPOINT_MEMBER_UPDATE, $options)->getBody()->getContents();

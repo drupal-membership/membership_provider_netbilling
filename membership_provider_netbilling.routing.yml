@@ -21,8 +21,6 @@ membership_provider_netbilling.hosted_payment_controller_process:
   path: '/membership_provider_netbilling'
   defaults:
     _controller: '\Drupal\membership_provider_netbilling\Controller\HostedPaymentController::process'
-    _title: 'Hosted Payment Callback'
+    _title: 'Success!'
   requirements:
     _permission: 'access content'
-  options:
-    no_cache: TRUE
