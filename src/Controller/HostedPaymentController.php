@@ -104,6 +104,9 @@ class HostedPaymentController extends ControllerBase {
     // The integrity key is found on the Fraud Defense settings page.
     $toHash = $siteConfig['integrity_key'] . $query['Ecom_Ezic_Response_TransactionID'] . $query['Ecom_Ezic_Response_StatusCode'];
     foreach ($hashfields as $field) {
+      if (!isset($query[$field])) {
+        continue;
+      }
       $toHash .= $query[$field];
     }
     $target = strtoupper(md5($toHash));
@@ -125,7 +128,7 @@ class HostedPaymentController extends ControllerBase {
       $this->validateQuery();
     }
     catch (\Exception $e) {
-      $metadata = (new CacheableMetadata())->setCacheContexts('url.query_args:Ecom_Ezic_ProofOfPurchase_MD5');
+      $metadata = (new CacheableMetadata())->setCacheContexts(['url.query_args:Ecom_Ezic_ProofOfPurchase_MD5']);
       return (new HtmlResponse($e->getMessage(), $e->getCode()))
         ->addCacheableDependency($metadata);
     }
