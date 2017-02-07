@@ -8,12 +8,13 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Logger\LoggerChannelInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
-use Drupal\membership_provider\Plugin\ConfigurableMembershipProviderBase;
+use Drupal\membership\Plugin\ConfigurableMembershipProviderBase;
 use Drupal\membership_provider_netbilling\NetbillingUtilities;
+use Drupal\membership_provider_netbilling\SiteResolver;
 use GuzzleHttp\Client;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Psr\Http\Message\ResponseInterface;
-use Drupal\membership_provider\Annotation\MembershipProvider;
+use Drupal\membership\Annotation\MembershipProvider;
 use Drupal\Core\Annotation\Translation;
 
 /**
@@ -92,12 +93,20 @@ class NETBilling extends ConfigurableMembershipProviderBase implements Container
   protected $loggerChannel;
 
   /**
+   * The NETbilling site resolver service.
+   *
+   * @var \Drupal\membership_provider_netbilling\SiteResolver
+   */
+  protected $resolver;
+
+  /**
    * @inheritDoc
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, DateFormatter $dateFormatter, LoggerChannelInterface $loggerChannel) {
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, DateFormatter $dateFormatter, LoggerChannelInterface $loggerChannel, SiteResolver $resolver) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     $this->dateFormatter = $dateFormatter;
     $this->loggerChannel = $loggerChannel;
+    $this->resolver = $resolver;
   }
 
   /**
@@ -109,7 +118,8 @@ class NETBilling extends ConfigurableMembershipProviderBase implements Container
       $plugin_id,
       $plugin_definition,
       $container->get('date.formatter'),
-      $container->get('logger.channel.membership_provider_netbilling')
+      $container->get('logger.channel.membership_provider_netbilling'),
+      $container->get('membership_provider_netbilling.site_resolver')
     );
   }
 
@@ -344,6 +354,13 @@ class NETBilling extends ConfigurableMembershipProviderBase implements Container
   /**
    * @inheritDoc
    */
+  public function validateConfigurationForm(array &$form, FormStateInterface $form_state) {
+    // TODO: Implement validateConfigurationForm() method.
+  }
+
+  /**
+   * @inheritDoc
+   */
   public function defaultConfiguration() {
     return [
       'site_tag' => '',
@@ -352,6 +369,17 @@ class NETBilling extends ConfigurableMembershipProviderBase implements Container
       'retrieval_keyword' => '',
       'integrity_key' => '',
     ];
+  }
+
+  /**
+   * @inheritDoc
+   */
+  public function configureFromId($id) {
+    if ($config = $this->resolver->getSiteConfigById($id)) {
+      $this->setConfiguration($config);
+      return $this;
+    }
+    return FALSE;
   }
 
 }

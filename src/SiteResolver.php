@@ -66,6 +66,7 @@ class SiteResolver {
    * Resolve a site config by entity.
    *
    * @param \Drupal\Core\Entity\EntityInterface $entity
+   *
    * @return array|null
    */
   public function getSiteConfigByEntity(EntityInterface $entity) {
@@ -94,4 +95,32 @@ class SiteResolver {
     }
     return TRUE;
   }
+
+  /**
+   * Resolve a site config by member id.
+   *
+   * @param string $id The remote ID stored on the membership.
+   *
+   * @return array|null
+   */
+  public function getSiteConfigById($id) {
+    $key = 'membership_provider_netbilling.id.' . $id;
+    if ($cached = $this->cache->get($key)) {
+      $siteConfig = $cached->data;
+    }
+    else {
+      $event = new NetbillingResolveSiteEvent();
+      $event->setRemoteId($id);
+      $this->event_dispatcher->dispatch(NetbillingEvents::RESOLVE_SITE_CONFIG_ID, $event);
+      if (!$siteConfig = $event->getSiteConfig()) {
+        return NULL;
+      }
+      $this->cache->set($key,
+        $event->getSiteConfig(),
+        Cache::PERMANENT,
+        ['membership:provider:remote_id:' . $id]);
+    }
+    return $siteConfig;
+  }
+
 }

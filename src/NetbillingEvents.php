@@ -54,4 +54,9 @@ final class NetbillingEvents {
    */
   const RESOLVE_SITE_CONFIG_ENTITY = 'membership_provider_netbilling.resolver_entity';
 
+  /**
+   * Resolve config by remote ID.
+   */
+  const RESOLVE_SITE_CONFIG_ID = 'membership_provider_netbilling.resolver_id';
+
 }

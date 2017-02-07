@@ -16,14 +16,21 @@ class NetbillingResolveSiteEvent extends Event {
    *
    * @var array
    */
-  private $siteConfig;
+  protected $siteConfig;
 
   /**
    * The site entity.
    *
    * @var \Drupal\Core\Entity\EntityInterface
    */
-  private $siteEntity;
+  protected $siteEntity;
+
+  /**
+   * The remote ID
+   *
+   * @var string
+   */
+  protected $remoteId;
 
   /**
    * @inheritDoc
@@ -32,6 +39,24 @@ class NetbillingResolveSiteEvent extends Event {
     if ($site_tag) {
       $this->siteConfig = ['site_tag' => $site_tag];
     }
+  }
+
+  /**
+   * Get the remote ID
+   *
+   * @return string
+   */
+  public function getRemoteId() {
+    return $this->remoteId;
+  }
+
+  /**
+   * Set the remote ID
+   *
+   * @param string $remoteId
+   */
+  public function setRemoteId($remoteId) {
+    $this->remoteId = $remoteId;
   }
 
   /**
