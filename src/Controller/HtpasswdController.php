@@ -3,10 +3,8 @@
 namespace Drupal\membership_provider_netbilling\Controller;
 
 use Drupal\Component\Plugin\PluginManagerInterface;
-use Drupal\Core\Access\AccessException;
 use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Access\AccessResultInterface;
-use Drupal\Core\Cache\CacheBackendInterface;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\membership_provider_netbilling\NetbillingEvent;
@@ -231,8 +229,8 @@ class HtpasswdController extends ControllerBase implements ContainerInjectionInt
   /**
    * Event dispatcher.
    *
-   * @param array $users Users to add - associative array of user => pw
    * @param string $method Event to fire.
+   * @param array $users Users to add - associative array of user => pw
    * @param array $data Arbitrary data to set in the event.
    *
    * @returns Response
@@ -275,7 +273,7 @@ class HtpasswdController extends ControllerBase implements ContainerInjectionInt
         if (empty($usernames)) {
           return $this->errorResponse('No users specified when attempting to check users.');
         }
-        $response = $this->event_dispatch($usernames, NetbillingEvents::CHECK);
+        $response = $this->event_dispatch(NetbillingEvents::CHECK, $usernames);
         break;
     }
     return $response;

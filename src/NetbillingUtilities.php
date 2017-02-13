@@ -2,6 +2,8 @@
 
 namespace Drupal\membership_provider_netbilling;
 
+use Drupal\Core\Datetime\DrupalDateTime;
+
 final class NetbillingUtilities {
 
   /**
@@ -64,9 +66,9 @@ final class NetbillingUtilities {
         // For initial terms, Netbilling only takes the term in days.
         // For recurring periods, it will accept a "button maker expression"
         if ($strategy == 'days') {
-          $end = new DateObject('now + ' . $interval['interval'] . ' months');
-          $now = new DateObject();
-          $duration = $end->difference($now, 'days');
+          $end = new DrupalDateTime('now + ' . $interval['interval'] . ' months');
+          $now = new DrupalDateTime();
+          $duration = $end->diff($now)->days;
         }
         else {
           // As determined by Netbilling button maker.

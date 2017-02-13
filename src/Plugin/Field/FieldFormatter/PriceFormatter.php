@@ -4,7 +4,6 @@ namespace Drupal\membership_provider_netbilling\Plugin\Field\FieldFormatter;
 
 use Drupal\commerce_price\NumberFormatterFactoryInterface;
 use Drupal\commerce_price\Plugin\Field\FieldFormatter\PriceDefaultFormatter;
-use Drupal\commerce_price\Price;
 use Drupal\commerce_price\RounderInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Field\FieldDefinitionInterface;
