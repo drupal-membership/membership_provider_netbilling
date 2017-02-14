@@ -110,7 +110,7 @@ class PriceFormatter extends PriceDefaultFormatter {
       ];
     }
 
-    if ($items) {
+    if (!empty($delta)) {
       $elements[$delta]['button'] = $this->formBuilder->buildForm('Drupal\membership_provider_netbilling\Form\BuyButtonForm', $formState);
     }
     return $elements;
