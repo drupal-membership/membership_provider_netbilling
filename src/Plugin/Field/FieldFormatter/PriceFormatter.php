@@ -2,6 +2,7 @@
 
 namespace Drupal\membership_provider_netbilling\Plugin\Field\FieldFormatter;
 
+use CommerceGuys\Intl\Formatter\CurrencyFormatterInterface;
 use Drupal\commerce_price\NumberFormatterFactoryInterface;
 use Drupal\commerce_price\Plugin\Field\FieldFormatter\PriceDefaultFormatter;
 use Drupal\commerce_price\Plugin\Field\FieldType\PriceItem;
@@ -45,8 +46,8 @@ class PriceFormatter extends PriceDefaultFormatter {
   /**
    * @inheritDoc
    */
-  public function __construct($plugin_id, $plugin_definition, FieldDefinitionInterface $field_definition, array $settings, $label, $view_mode, array $third_party_settings, EntityTypeManagerInterface $entity_type_manager, NumberFormatterFactoryInterface $number_formatter_factory, FormBuilderInterface $formBuilder, RounderInterface $rounder) {
-    parent::__construct($plugin_id, $plugin_definition, $field_definition, $settings, $label, $view_mode, $third_party_settings, $entity_type_manager, $number_formatter_factory);
+  public function __construct($plugin_id, $plugin_definition, FieldDefinitionInterface $field_definition, array $settings, $label, $view_mode, array $third_party_settings, CurrencyFormatterInterface $currencyFormatter, FormBuilderInterface $formBuilder, RounderInterface $rounder) {
+    parent::__construct($plugin_id, $plugin_definition, $field_definition, $settings, $label, $view_mode, $third_party_settings, $currencyFormatter);
     $this->formBuilder = $formBuilder;
     $this->rounder = $rounder;
   }
@@ -63,8 +64,7 @@ class PriceFormatter extends PriceDefaultFormatter {
       $configuration['label'],
       $configuration['view_mode'],
       $configuration['third_party_settings'],
-      $container->get('entity_type.manager'),
-      $container->get('commerce_price.number_formatter_factory'),
+      $container->get('commerce_price.currency_formatter'),
       $container->get('form_builder'),
       $container->get('commerce_price.rounder')
     );
@@ -82,31 +82,29 @@ class PriceFormatter extends PriceDefaultFormatter {
     foreach ($items as $delta => $item) {
       $currency_codes[] = $item->currency_code;
     }
-    $currencies = $this->currencyStorage->loadMultiple($currency_codes);
     $formState = (new FormState())
       ->addBuildInfo('entity', $items->getEntity());
     $elements = [];
     $delta = 0;
     foreach ($items as $delta => $item) {
-      /** @var PriceItem $item */
-      $currency = $currencies[$item->currency_code];
-      $price = $this->numberFormatter->formatCurrency($item->number, $currency);
+      /** @var \Drupal\commerce_price\Plugin\Field\FieldType\PriceItem $item */
+      $roundedPrice = $this->rounder->round($item->toPrice());
       $label = '';
-      $rawPrice = $this->rounder->round($item->toPrice())->getNumber();
       // Always add a price.
-      $formState->addBuildInfo('price', $rawPrice);
+      $formState->addBuildInfo('price', $roundedPrice->getNumber());
       // Two values equate to recurring billing.
       if (count($items) > 1 && !$item->toPrice()->isZero()) {
         $label = $delta === 0 ? $this->t('Initial') : $this->t('Recurring');
         if ($delta === 1) {
-          $formState->addBuildInfo('recurring', $rawPrice);
+          $formState->addBuildInfo('recurring', $roundedPrice->getNumber());
         }
         $label .= ': ';
       }
       if (!$item->toPrice()->isZero()) {
         $elements[$delta] = [
           '#prefix' => $label,
-          '#markup' => $price,
+          '#markup' => $this->currencyFormatter
+            ->format($roundedPrice->getNumber(), $roundedPrice->getCurrencyCode()),
           '#cache' => [
             'contexts' => [
               'languages:' . LanguageInterface::TYPE_INTERFACE,
