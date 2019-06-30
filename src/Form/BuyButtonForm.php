@@ -59,6 +59,7 @@ class BuyButtonForm extends FormBase {
     $entity = $form_state->getBuildInfo()['entity'];
     $config = $this->siteResolver->getSiteConfigByEntity($entity);
     $form['#action'] = self::ACTION;
+    $form['#cache']['tags'] = $entity->getCacheTags();
     $form['#method'] = 'GET';
     $sendHashFields = [
       'Ecom_Ezic_AccountAndSitetag',
