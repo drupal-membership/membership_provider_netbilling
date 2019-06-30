@@ -95,7 +95,7 @@ class HtpasswdController extends ControllerBase implements ContainerInjectionInt
    * @return $this
    * @throws \Exception
    */
-  private function setCommand($cmd) {
+  protected function setCommand($cmd) {
     $allowed = [
       'POST' => [
         'append_user',
@@ -123,21 +123,21 @@ class HtpasswdController extends ControllerBase implements ContainerInjectionInt
    * @param $msg
    * @return \Symfony\Component\HttpFoundation\Response
    */
-  private function errorResponse($msg) {
+  protected function errorResponse($msg) {
     return new Response($msg, 400, ['Content-Type' => 'text/plain']);
   }
 
   /**
    * @return \Symfony\Component\HttpFoundation\Response
    */
-  private function blankResponse() {
+  protected function blankResponse() {
     return new Response('', 200, ['Content-Type' => 'text/plain']);
   }
 
   /**
    * @return mixed
    */
-  private function getCommandBase() {
+  protected function getCommandBase() {
     list($cmd_base) = explode('_', $this->cmd);
     return $cmd_base;
   }
@@ -213,7 +213,7 @@ class HtpasswdController extends ControllerBase implements ContainerInjectionInt
    * @param $site_tag
    * @return array
    */
-  private function setSiteConfig($site_tag) {
+  protected function setSiteConfig($site_tag) {
     $this->siteConfig = $this->siteResolver->getSiteConfig($site_tag);
     $this->siteResolver->validateSiteKeyword($site_tag, $this->currentRequest->get('keyword'));
     return $this->getSiteConfig();
@@ -222,7 +222,7 @@ class HtpasswdController extends ControllerBase implements ContainerInjectionInt
   /**
    * @return array
    */
-  private function getSiteConfig() {
+  protected function getSiteConfig() {
     return $this->siteConfig;
   }
 
@@ -230,12 +230,12 @@ class HtpasswdController extends ControllerBase implements ContainerInjectionInt
    * Event dispatcher.
    *
    * @param string $method Event to fire.
-   * @param array $users Users to add - associative array of user => pw
+   * @param array $users Users to add or check - associative array of user => pw
    * @param array $data Arbitrary data to set in the event.
    *
    * @returns Response
    */
-  private function event_dispatch($method, $users, $data = []) {
+  protected function event_dispatch($method, $users, $data = []) {
     $event = new NetbillingEvent($this->getSiteConfig(), $users, $data);
     $this->eventDispatcher->dispatch($method, $event);
     if ($event->isFulfilled()) {
@@ -270,10 +270,13 @@ class HtpasswdController extends ControllerBase implements ContainerInjectionInt
         $response->setContent($this->get_test());
         break;
       case 'check':
-        if (empty($usernames)) {
+        if (!$username = $this->currentRequest->get('u')) {
           return $this->errorResponse('No users specified when attempting to check users.');
         }
-        $response = $this->event_dispatch(NetbillingEvents::CHECK, $usernames);
+        $response = $this->event_dispatch(
+          NetbillingEvents::CHECK,
+          [$username => $username]
+        );
         break;
     }
     return $response;
@@ -285,7 +288,7 @@ class HtpasswdController extends ControllerBase implements ContainerInjectionInt
    *
    * @returns string Content.
    */
-  private function get_test() {
+  protected function get_test() {
     $label_length = 30;
     $content = array(
       '  OK: Control interface is live',
