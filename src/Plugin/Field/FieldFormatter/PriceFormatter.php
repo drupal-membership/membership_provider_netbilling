@@ -14,6 +14,7 @@ use Drupal\Core\Form\FormBuilderInterface;
 use Drupal\Core\Form\FormState;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Language\LanguageInterface;
+use Drupal\membership_provider_netbilling\Form\BuyButtonForm;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -84,8 +85,7 @@ class PriceFormatter extends PriceDefaultFormatter {
     }
     $formState = (new FormState())
       ->addBuildInfo('entity', $items->getEntity());
-    $elements = [];
-    $delta = 0;
+    $priceElements = [];
     foreach ($items as $delta => $item) {
       /** @var \Drupal\commerce_price\Plugin\Field\FieldType\PriceItem $item */
       $roundedPrice = $this->rounder->round($item->toPrice());
@@ -101,9 +101,10 @@ class PriceFormatter extends PriceDefaultFormatter {
         $label .= ': ';
       }
       if (!$item->toPrice()->isZero()) {
-        $elements[$delta] = [
-          '#prefix' => $label,
-          '#markup' => $this->currencyFormatter
+        $priceElements[$delta] = [
+          '#prefix' => '<span class="price-element">',
+          '#suffix' => '</span>',
+          '#markup' => $label . $this->currencyFormatter
             ->format($roundedPrice->getNumber(), $roundedPrice->getCurrencyCode()),
           '#cache' => [
             'contexts' => [
@@ -114,24 +115,24 @@ class PriceFormatter extends PriceDefaultFormatter {
         ];
       }
     }
-    if (count($elements) === 1) {
-      unset($elements[0]['#prefix']);
+    if (count($priceElements) === 1) {
+      unset($priceElements[0]['#prefix']);
     }
     // Return empty set if there was no price specified; nothing to sell.
-    if (!$elements) {
-      return $elements;
+    if (!$priceElements) {
+      return $priceElements;
     }
 
-    $button = $this->formBuilder->buildForm('Drupal\membership_provider_netbilling\Form\BuyButtonForm', $formState);
+    $button = $this->formBuilder->buildForm(BuyButtonForm::class, $formState);
     if ($this->getSetting('only_buy_button')) {
-      $elements = [
+      return [
         ['button' => $button],
       ];
     }
     else {
-      $elements[$delta + 1]['button'] = $button;
+      $priceElements[] = $button;
     }
-    return $elements;
+    return [0 => $priceElements];
   }
 
   /**
