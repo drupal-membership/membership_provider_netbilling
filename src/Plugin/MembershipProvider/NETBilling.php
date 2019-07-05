@@ -219,7 +219,7 @@ class NETBilling extends ConfigurableMembershipProviderBase implements Container
     return $this->sendReportingRequest(
       $params,
       $sites,
-      $service == 'members' ? self::ENDPOINT_REPORTING : self::ENDPOINT_TRANSACTIONS
+      $service == self::REPORTING_TYPE_MEMBERS ? self::ENDPOINT_REPORTING : self::ENDPOINT_TRANSACTIONS
     );
   }
 
