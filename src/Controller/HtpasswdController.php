@@ -166,7 +166,8 @@ class HtpasswdController extends ControllerBase implements ContainerInjectionInt
       'u' => array(),
     );
     $hash = FALSE;
-    $post = NetbillingUtilities::parse_str_multiple($this->currentRequest->getContent()) + $default_param;
+    $post = NetbillingUtilities::parse_str_multiple($this->currentRequest->getContent())
+      + $default_param;
     // Follow the preferred source of passwords.
     $pw_sources = array(
       'p', // UNIX crypt
@@ -183,7 +184,7 @@ class HtpasswdController extends ControllerBase implements ContainerInjectionInt
     }
     // Should we hash the password before saving?
     // Allow for delete/check commands to omit passwords.
-    $expect_pws = preg_match($this->cmd, '/^(append|update)/');
+    $expect_pws = preg_match('/^(append|update)/', $this->cmd);
     if ($expect_pws) {
       if (count($post['u']) == count($pws)) {
         $users = !is_array($post['u']) ? array($post['u'] => $pws) : array_combine($post['u'], $pws);

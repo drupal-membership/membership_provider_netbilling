@@ -1,19 +1,18 @@
 membership_provider_netbilling.htpasswd_controller_post:
   path: '/membership_provider_netbilling/{site_tag}'
+  methods: [POST]
   defaults:
     _controller: '\Drupal\membership_provider_netbilling\Controller\HtpasswdController::post'
-
     _title: 'NETBilling Htpasswd POST callback'
   requirements:
-    _method: 'POST'
     _custom_access: '\Drupal\membership_provider_netbilling\Controller\HtpasswdController::access'
 membership_provider_netbilling.htpasswd_controller_get:
   path: '/membership_provider_netbilling/{site_tag}'
+  methods: [GET]
   defaults:
     _controller: '\Drupal\membership_provider_netbilling\Controller\HtpasswdController::get'
     _title: 'NETBilling Htpasswd GET emulator'
   requirements:
-    _method: 'GET'
     _custom_access: '\Drupal\membership_provider_netbilling\Controller\HtpasswdController::access'
   options:
     no_cache: TRUE
