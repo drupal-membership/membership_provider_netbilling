@@ -196,7 +196,7 @@ class HtpasswdController extends ControllerBase implements ContainerInjectionInt
     else {
       // This is a check username or delete action, so $users is actually just usernames.
       // The passwords may or may not have been provided, but we don't need them.
-      $usernames = !is_array($post['u']) ? array($post['u']) : $post['u'];
+      $usernames = !is_array($post['u']) ? [$post['u']] : $post['u'];
     }
 
     // Script must accept plural or singular form of user actions.
@@ -207,6 +207,15 @@ class HtpasswdController extends ControllerBase implements ContainerInjectionInt
         return $this->event_dispatch(NetbillingEvents::DELETE, $usernames);
       case 'update':
         return $this->event_dispatch(NetbillingEvents::UPDATE, $users, ['hash' => $hash]);
+      case 'check':
+        if (!$usernames) {
+          return $this->errorResponse('No users specified when attempting to check users.');
+        }
+        return $this->event_dispatch(
+          NetbillingEvents::CHECK,
+          array_flip($usernames)
+        );
+        break;
     }
   }
 
@@ -269,15 +278,6 @@ class HtpasswdController extends ControllerBase implements ContainerInjectionInt
     switch ($this->getCommandBase()) {
       case 'test':
         $response->setContent($this->get_test());
-        break;
-      case 'check':
-        if (!$username = $this->currentRequest->get('u')) {
-          return $this->errorResponse('No users specified when attempting to check users.');
-        }
-        $response = $this->event_dispatch(
-          NetbillingEvents::CHECK,
-          [$username => $username]
-        );
         break;
     }
     return $response;
