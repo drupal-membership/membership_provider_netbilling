@@ -79,10 +79,6 @@ class PriceFormatter extends PriceDefaultFormatter {
     if (count($items) > 2) {
       return parent::viewElements($items, $langcode);
     }
-    $currency_codes = [];
-    foreach ($items as $delta => $item) {
-      $currency_codes[] = $item->currency_code;
-    }
     $formState = (new FormState())
       ->addBuildInfo('entity', $items->getEntity());
     $priceElements = [];
@@ -91,7 +87,9 @@ class PriceFormatter extends PriceDefaultFormatter {
       $roundedPrice = $this->rounder->round($item->toPrice());
       $label = '';
       // Always add a price.
-      $formState->addBuildInfo('price', $roundedPrice->getNumber());
+      if ($delta == 0) {
+        $formState->addBuildInfo('price', $roundedPrice->getNumber());
+      }
       // Two values equate to recurring billing.
       if (count($items) > 1 && !$item->toPrice()->isZero()) {
         $label = $delta === 0 ? $this->t('Initial') : $this->t('Recurring');
