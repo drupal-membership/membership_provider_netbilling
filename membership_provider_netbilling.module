@@ -6,7 +6,10 @@
 function membership_provider_netbilling_theme($existing, $type, $theme, $path) {
   $items = [
     'membership_provider_netbilling_receipt' => [
-      'render element' => 'element',
+      'variables' => [
+        'transaction_data' => [],
+        'message' => '',
+      ],
     ],
   ];
   return $items;

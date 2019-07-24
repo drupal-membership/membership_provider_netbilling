@@ -136,8 +136,9 @@ class HostedPaymentController extends ControllerBase {
     $this->eventDispatcher->dispatch(NetbillingEvents::HOSTED_RETURN, $event);
     $return = [
       'receipt' => [
-        '#type' => 'membership_provider_netbilling_receipt',
-        '#data' => $this->query,
+        '#theme' => 'membership_provider_netbilling_receipt',
+        '#transaction_data' => $this->query,
+        '#message' => $event->getMessage(),
         '#cache' => [
           'contexts' => ['url.query_args:Ecom_Ezic_Response_TransactionID'],
         ],
