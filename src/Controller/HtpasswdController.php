@@ -226,10 +226,15 @@ class HtpasswdController extends ControllerBase implements ContainerInjectionInt
   }
 
   /**
-   * @param $site_tag
+   * Set the site config for the current request, with validation.
+   *
+   * @param string $site_tag
+   *   Site tag.
+   *
    * @return array
+   *   The selected site's config.
    */
-  protected function setSiteConfig($site_tag) {
+  protected function setSiteConfig(string $site_tag) {
     $this->siteConfig = $this->siteResolver->getSiteConfig($site_tag);
     $this->siteResolver->validateSiteKeyword($site_tag, $this->currentRequest->get('keyword'));
     return $this->getSiteConfig();
@@ -245,11 +250,14 @@ class HtpasswdController extends ControllerBase implements ContainerInjectionInt
   /**
    * Event dispatcher.
    *
-   * @param string $method Event to fire.
-   * @param array $users Users to add or check - associative array of user => pw
-   * @param array $data Arbitrary data to set in the event.
+   * @param string $method
+   *   Event to fire.
+   * @param array $users
+   *   Users to add or check - associative array of user => pw
+   * @param array $data
+   *   Arbitrary data to set in the event.
    *
-   * @returns Response
+   * @returns \Symfony\Component\HttpFoundation\Response
    */
   protected function event_dispatch($method, $users, $data = []) {
     $event = new NetbillingEvent($this->getSiteConfig(), $users, $data);
