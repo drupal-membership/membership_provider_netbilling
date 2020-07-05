@@ -15,9 +15,7 @@ use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 /**
- * Class HostedPaymentController.
- *
- * @package Drupal\membership_provider_netbilling\Controller
+ * Controller for receiving hosted payment page postbacks.
  */
 class HostedPaymentController extends ControllerBase {
 
@@ -41,13 +39,6 @@ class HostedPaymentController extends ControllerBase {
    * @var \Drupal\membership_provider_netbilling\SiteResolver
    */
   protected $siteResolver;
-
-  /**
-   * The query array.
-   *
-   * @var array
-   */
-  protected $query = [];
 
   /**
    * Query args cache context service.
@@ -80,7 +71,6 @@ class HostedPaymentController extends ControllerBase {
    */
   public function __construct(RequestStack $requestStack, SiteResolver $siteResolver, QueryArgsCacheContext $queryArgs, EventDispatcherInterface $eventDispatcher) {
     $this->currentRequest = $requestStack->getCurrentRequest();
-    $this->query = $this->currentRequest->query->all();
     $this->siteResolver = $siteResolver;
     $this->queryArgs = $queryArgs;
     $this->eventDispatcher = $eventDispatcher;
@@ -95,7 +85,7 @@ class HostedPaymentController extends ControllerBase {
    * @throws \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException
    */
   protected function validateQuery() {
-    $query = $this->query;
+    $query = $this->currentRequest->query->all();
     $hashfields = explode(' ', $query['Ecom_Ezic_Security_HashFields']);
     list(,$site_tag) = explode(':', $query['Ecom_Ezic_AccountAndSitetag']);
     $siteConfig = $this->siteResolver->getSiteConfig($site_tag);
@@ -132,12 +122,12 @@ class HostedPaymentController extends ControllerBase {
       return (new HtmlResponse($e->getMessage(), $e->getCode()))
         ->addCacheableDependency($metadata);
     }
-    $event = new NetbillingEvent($this->siteConfig, [], $this->query);
+    $event = new NetbillingEvent($this->siteConfig, [], [], $this->currentRequest);
     $this->eventDispatcher->dispatch(NetbillingEvents::HOSTED_RETURN, $event);
     $return = [
       'receipt' => [
         '#theme' => 'membership_provider_netbilling_receipt',
-        '#transaction_data' => $this->query,
+        '#transaction_data' => $this->currentRequest->query->all(),
         '#message' => $event->getMessage(),
         '#cache' => [
           'contexts' => ['url.query_args:Ecom_Ezic_Response_TransactionID'],

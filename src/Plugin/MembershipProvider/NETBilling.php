@@ -138,15 +138,17 @@ class NETBilling extends ConfigurableMembershipProviderBase implements Container
   }
 
   /**
+   * Get default request parameters.
+   *
    * @return array
    */
   protected function default_request_options() {
-    return array(
+    return [
       'headers' => [
         'User-Agent' => self::NETBILLING_UA,
       ],
       'body' => '',
-    );
+    ];
   }
 
   /**
@@ -201,11 +203,17 @@ class NETBilling extends ConfigurableMembershipProviderBase implements Container
   /**
    * Make a request to the membership or transactions reporting endpoint.
    *
-   * @param $service string Service to query - members|transactions
-   * @param $from int Unix timestamp for from date; defaults to now.
-   * @param $to int Unix timestamp for to date; optional
-   * @param $sites array Override array of site configurations retrieve on this account.
+   * @param $service string
+   *   Service to query - members|transactions
+   * @param $from int
+   *   Unix timestamp for from date; defaults to now.
+   * @param $to int
+   *   Unix timestamp for to date; optional
+   * @param $sites array
+   *   Override array of site configurations retrieve on this account.
+   *
    * @throws \Exception
+   *
    * @returns mixed Array of results.
    */
   public function reportingRequest(string $service = self::REPORTING_TYPE_MEMBERS, $from = NULL, $to = NULL, $sites = []) {
@@ -218,8 +226,8 @@ class NETBilling extends ConfigurableMembershipProviderBase implements Container
 
     return $this->sendReportingRequest(
       $params,
-      $sites,
-      $service == self::REPORTING_TYPE_MEMBERS ? self::ENDPOINT_REPORTING : self::ENDPOINT_TRANSACTIONS
+      $service == self::REPORTING_TYPE_MEMBERS ? self::ENDPOINT_REPORTING : self::ENDPOINT_TRANSACTIONS,
+      $sites
     );
   }
 
@@ -228,14 +236,20 @@ class NETBilling extends ConfigurableMembershipProviderBase implements Container
    *
    * @see http://secure.netbilling.com/public/docs/merchant/public/directmode/repinterface1.5.html
    *
-   * @param $params array Array of parameters to build into the request.
-   * @param $sites array Override array of site configurations retrieve on this account.
-   * @param $endpoint string Endpoint to query. Member Reporting and Transaction
-   *   share similar request parameters and response shapes.
+   * @param $params array
+   *   Array of parameters to build into the request.
+   * @param $endpoint string
+   *   Endpoint to query. Member Reporting and Transaction share similar request
+   *   parameters and response shapes.
+   * @param $sites array
+   *   Override array of site configurations retrieve on this account.
+   *
    * @throws \Exception
-   * @returns mixed Array of array containing rows, and column headers (as keys => index), or FALSE on failure
+   *
+   * @returns mixed
+   *   Array of array containing rows, and column headers (as keys => index), or FALSE on failure
    */
-  protected function sendReportingRequest($params, $sites = [], $endpoint) {
+  protected function sendReportingRequest($params, $endpoint, $sites = []) {
     $config = $this->getConfiguration();
     $localParams = [];
     foreach ($sites as $site) {
@@ -266,14 +280,15 @@ class NETBilling extends ConfigurableMembershipProviderBase implements Container
       $client = new Client();
       $result = $client->request('POST', $endpoint, $options);
       // Errors could also manifest in different response codes/headers.
-      if ((reset($result->getHeader('Content-Type')) == 'text/plain') || ($retry = $result->getHeader('Retry-After'))) {
+      $contentType = $result->getHeader('content-type');
+      if ((reset($contentType) == 'text/plain') || ($retry = $result->getHeader('retry-after'))) {
         if (isset($retry)) {
           $msg = $result->getBody() . ' / ' . $this->stringTranslation->translate('Retry after :s seconds', [':s' => reset($retry)]);
           $code = 429; // Too Many Requests
           // @todo - Implement caching the response and enforcing Retry-After interval.
         }
         else {
-          list($code, $msg) = explode(' ', $result->getBody(), 2);
+          [$code, $msg] = explode(' ', $result->getBody()->getContents(), 2);
         }
         // Errors are indicated by the content-type of the response - code is first part of the body.
         throw new \Exception($msg, $code);

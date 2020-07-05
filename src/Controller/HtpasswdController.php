@@ -17,9 +17,8 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
- * Class HtpasswdController.
- *
- * @package Drupal\membership_provider_netbilling\Controller
+ * Controller to emulate the "htpasswd" CGI script NETbilling expects to
+ * communicate with. Very old school but this is our shim to modernize.
  */
 class HtpasswdController extends ControllerBase implements ContainerInjectionInterface {
 
@@ -182,12 +181,19 @@ class HtpasswdController extends ControllerBase implements ContainerInjectionInt
         break;
       }
     }
+    // If only one was sent, it is scalar.
+    if (is_string($pws)) {
+      $pws = [$pws];
+    }
+    if (is_string($post['u'])) {
+      $post['u'] = [$post['u']];
+    }
     // Should we hash the password before saving?
     // Allow for delete/check commands to omit passwords.
     $expect_pws = preg_match('/^(append|update)/', $this->cmd);
     if ($expect_pws) {
       if (count($post['u']) == count($pws)) {
-        $users = !is_array($post['u']) ? array($post['u'] => $pws) : array_combine($post['u'], $pws);
+        $users = array_combine($post['u'], $pws);
       }
       else {
         return $this->errorResponse('ERROR: Username/password count mismatch');

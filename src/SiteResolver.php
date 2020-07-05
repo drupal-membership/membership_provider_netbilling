@@ -40,8 +40,11 @@ class SiteResolver {
   /**
    * Get a site config.
    *
-   * @param $site_tag
+   * @param string $site_tag
+   *   Site Tag.
+   *
    * @return array|null
+   *   Site config.
    */
   public function getSiteConfig($site_tag) {
     $key = 'membership_provider_netbilling.site.' . $site_tag;
