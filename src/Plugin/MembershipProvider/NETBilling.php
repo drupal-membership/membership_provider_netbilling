@@ -156,17 +156,23 @@ class NETBilling extends ConfigurableMembershipProviderBase implements Container
    *
    * @see https://secure.netbilling.com/public/docs/merchant/public/directmode/mupdate1.1.html
    *
-   * @param $identifier array An array with either an id or name key.
-   * @param string $cmd The command to issue, defaults to GET. (Others not yet implemented.)
-   * @param array $data Data to send via an update command.
-   * @return array A structured array with keys as described at the URL above.
-   *
    * @todo Implement sending $data
+   *
+   * @param array $identifier
+   *   An array with either an id or name key.
+   * @param string $cmd
+   *   The command to issue, defaults to GET. (Others not yet implemented.)
+   * @param array $data
+   *   Data to send via an update command.
+   *
+   * @return array
+   *   A structured array with keys as described at the URL above.
    */
   public function update_request($identifier, $cmd = 'GET', $data = []) {
     $config = $this->configuration;
     $params = array(
-      'C_ACCOUNT' => $config['account_id'],
+      // The docs say you can use just the account ID but this is not true in practice.
+      'C_ACCOUNT' => $config['account_id'] . ':' . $config['site_tag'],
       'C_CONTROL_KEYWORD' => $config['access_keyword'],
       'C_COMMAND' => $cmd,
     );
