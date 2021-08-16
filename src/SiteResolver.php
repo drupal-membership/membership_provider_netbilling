@@ -53,7 +53,7 @@ class SiteResolver {
     }
     else {
       $event = new NetbillingResolveSiteEvent($site_tag);
-      $this->event_dispatcher->dispatch(NetbillingEvents::RESOLVE_SITE_CONFIG, $event);
+      $this->event_dispatcher->dispatch($event, NetbillingEvents::RESOLVE_SITE_CONFIG);
       if (!$siteConfig = $event->getSiteConfig()) {
         return NULL;
       }
@@ -80,7 +80,7 @@ class SiteResolver {
     else {
       $event = new NetbillingResolveSiteEvent();
       $event->setSiteEntity($entity);
-      $this->event_dispatcher->dispatch(NetbillingEvents::RESOLVE_SITE_CONFIG_ENTITY, $event);
+      $this->event_dispatcher->dispatch($event, NetbillingEvents::RESOLVE_SITE_CONFIG_ENTITY);
       if (!$siteConfig = $event->getSiteConfig()) {
         return NULL;
       }
@@ -114,7 +114,7 @@ class SiteResolver {
     else {
       $event = new NetbillingResolveSiteEvent();
       $event->setRemoteId($id);
-      $this->event_dispatcher->dispatch(NetbillingEvents::RESOLVE_SITE_CONFIG_ID, $event);
+      $this->event_dispatcher->dispatch($event, NetbillingEvents::RESOLVE_SITE_CONFIG_ID);
       if (!$siteConfig = $event->getSiteConfig()) {
         return NULL;
       }

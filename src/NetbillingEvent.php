@@ -2,7 +2,7 @@
 
 namespace Drupal\membership_provider_netbilling;
 
-use Symfony\Component\EventDispatcher\Event;
+use Drupal\Component\EventDispatcher\Event;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
